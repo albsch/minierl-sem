@@ -8,7 +8,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1]).
+-export([eval/1, is_empty/1, is_any/1, normalize/1]).
 
 -export([ty_var/1, ty_atom/1]).
 
@@ -56,3 +56,21 @@ is_empty({terminal, Atom}) ->
 is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
   is_empty(PositiveEdge)
     andalso is_empty(NegativeEdge).
+
+
+
+normalize(Ty) -> normalize(Ty, [], []).
+
+
+normalize(0, _, _) -> [[]]; % satisfiable
+normalize({terminal, Atom}, PVar, NVar) ->
+  ty_atom:normalize(Atom, PVar, NVar);
+normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar) ->
+  constraint_set:merge_and_meet(
+    normalize(PositiveEdge, [Variable | PVar], NVar),
+    normalize(NegativeEdge, PVar, [Variable | NVar])
+  ).
+
+
+
+

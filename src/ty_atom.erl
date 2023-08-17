@@ -14,6 +14,8 @@
 -behavior(b_atom).
 -export([finite/1, cofinite/1]).
 
+-export([normalize/3]).
+
 empty() -> {{0, nil}, finite}.
 any() -> {{0, nil}, cofinite}.
 
@@ -62,3 +64,15 @@ is_any(Rep) ->
 
 % using erlang total ordering for now
 compare(R1, R2) -> case R1 < R2 of true -> -1; _ -> case R1 > R2 of true -> 1; _ -> 0 end end.
+
+
+
+normalize(TyAtom, [], []) ->
+  % Fig. 3 Line 3
+  case is_empty(TyAtom) of
+    true -> [[]];
+    false -> []
+  end;
+normalize(TyAtom, PVar, NVar) ->
+  % Fig. 3 Line 2
+  error("TODO atom variables case").

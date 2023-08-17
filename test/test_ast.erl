@@ -79,6 +79,10 @@ setup_ets() -> spawn(fun() -> ets:new(?VAR_ETS, [public, named_table]), receive 
 subty(T1, T2) ->
   ty_rec:is_subtype(test_ast:norm(T1), test_ast:norm(T2)).
 
+norm(T1, T2) ->
+  ty_rec:normalize(ty_rec:intersect(test_ast:norm(T1), ty_rec:negate(test_ast:norm(T2)))).
+
+b() -> atom.
 b(Atom) -> {'atom', Atom}.
 
 % type constructors
@@ -122,6 +126,9 @@ n(X) -> {negation, X}.
 norm(int) ->
   Int = dnf_var_int:any(),
   ty_rec:interval(Int);
+norm(atom) ->
+  Atom = dnf_var_ty_atom:any(),
+  ty_rec:atom(Atom);
 norm({'atom', Atom}) ->
   TyAtom = ty_atom:finite([Atom]),
   TAtom = dnf_var_ty_atom:ty_atom(TyAtom),

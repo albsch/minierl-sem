@@ -13,7 +13,7 @@
 % top type constructors
 -export([function/0, atom/0, interval/0, tuple/0]).
 
--export([is_subtype/2]).
+-export([is_subtype/2, normalize/1]).
 
 -record(ty, {atom, interval, tuple, function}).
 
@@ -171,3 +171,44 @@ eval(_) ->
 
 is_any(_Arg0) ->
   erlang:error(any_not_implemented). % TODO needed?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+normalize(TyRef) ->
+  % TOOD memoize check
+
+  Ty = ty_ref:load(TyRef),
+  AtomNormalize = dnf_var_ty_atom:normalize(Ty#ty.atom),
+  io:format(user, "~p~n", [AtomNormalize]),
+
+%%    andalso dnf_var_int:is_empty(Ty#ty.interval)
+%%    andalso (
+%%      begin
+%%        case ty_ref:is_empty_memoized(TyRef) of
+%%          true -> true;
+%%          miss ->
+%%            % memoize
+%%            ok = ty_ref:memoize(TyRef),
+%%            dnf_var_ty_tuple:is_empty(Ty#ty.tuple)
+%%              andalso dnf_var_ty_function:is_empty(Ty#ty.function)
+%%        end
+%%      end
+%%  ).
+  AtomNormalize.
+
+%%  erlang:error("todo").
