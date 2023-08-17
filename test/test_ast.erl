@@ -79,8 +79,15 @@ setup_ets() -> spawn(fun() -> ets:new(?VAR_ETS, [public, named_table]), receive 
 subty(T1, T2) ->
   ty_rec:is_subtype(test_ast:norm(T1), test_ast:norm(T2)).
 
-norm(T1, T2) ->
-  ty_rec:normalize(ty_rec:intersect(test_ast:norm(T1), ty_rec:negate(test_ast:norm(T2)))).
+normalize(T, Fixed) ->
+  FixedN = sets:from_list(lists:map(
+    fun({var, Name}) -> maybe_new_variable(Name) end, sets:to_list(Fixed))),
+  ty_rec:normalize(test_ast:norm(T), FixedN).
+
+normalize(T1, T2, Fixed) ->
+  FixedN = sets:from_list(lists:map(
+    fun({var, Name}) -> maybe_new_variable(Name) end, sets:to_list(Fixed))),
+  ty_rec:normalize(ty_rec:intersect(test_ast:norm(T1), ty_rec:negate(test_ast:norm(T2))), FixedN).
 
 b() -> atom.
 b(Atom) -> {'atom', Atom}.
@@ -169,6 +176,7 @@ norm({union, A, B}) -> ty_rec:union(norm(A), norm(B));
 norm({intersection, A, B}) -> ty_rec:intersect(norm(A), norm(B));
 norm({negation, A}) -> ty_rec:negate(norm(A)).
 
+var_of({var, Name}) -> maybe_new_variable(Name).
 
 maybe_new_variable(Name) ->
   Object = ets:lookup(?VAR_ETS, Name),

@@ -243,46 +243,6 @@
 %%  lazy_meet(Con11, Con22, Sym).
 %%
 %%
-%%merge_and_meet([], _Set2, _Sym) -> [];
-%%merge_and_meet(_Set1, [], _Sym) -> [];
-%%merge_and_meet([[]], Set2, _Sym) -> Set2;
-%%merge_and_meet(Set1, [[]], _Sym) -> Set1;
-%%merge_and_meet(La, Lb, Sym) ->
-%%  {H1, H2} = {erlang:phash2(La), erlang:phash2(Lb)},
-%%
-%%  memoize:memo_fun(
-%%    {norm_meet, {H1, H2}},
-%%    fun() ->
-%%      R = lists:map(fun(E) -> unionlist(Lb, E, Sym) end, La),
-%%      R2 = lists:foldl(fun(NewS, All) -> merge_and_join(NewS, All, Sym) end, [], R),
-%%      sanity(R2),
-%%      R2
-%%      end).
-%%
-%%
-%%
-%%unionlist(L, A, Sym) -> lists:map(fun(E) -> union(A, E, Sym) end, L).
-%%
-%%
-%%union([], L, _Sym) -> L;
-%%union(L, [], _Sym) -> L;
-%%union([{V1, T1, T2} | C1], [{V2, S1, S2} | C2], Sym) when V1 == V2 ->
-%%  Lower = subty:simple_empty(dnf:partitions_to_ty(dnf:simplify(subty:simple_empty(tunion(T1, S1), Sym))), Sym),
-%%  Upper = subty:simple_empty(dnf:partitions_to_ty(dnf:simplify(subty:simple_empty(tinter(T2, S2), Sym))), Sym),
-%%
-%%%%  logger:warning("CONS ~p ~p ~p ~n~p", [Lower, V1, Upper, subty:is_subty(Sym, Lower, Upper)]),
-%%%%  case subty:is_subty(Sym, Lower, Upper) of
-%%%%    false ->
-%%%%      logger:warning("Lower bound is bigger than upper bound!"),
-%%%%      throw(todo),
-%%%%      [];
-%%%%    _ ->
-%%      [{V1, Lower, Upper}] ++ union(C1, C2, Sym);
-%%%%  end;
-%%union([Z = {V1, _, _} | C1], S = [{V2, _, _} | _C2], Sym) when V1 < V2 ->
-%%  [Z] ++ union(C1, S, Sym);
-%%union(S = [{_, _, _} | _C1], [Z = {_, _, _} | C2], Sym) ->
-%%  [Z] ++ union(C2, S, Sym).
 %%
 %%
 %%

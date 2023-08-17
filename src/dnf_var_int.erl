@@ -8,7 +8,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1]).
+-export([eval/1, is_empty/1, is_any/1, normalize/2]).
 
 -export([var/1, int/1]).
 
@@ -56,6 +56,18 @@ is_empty({terminal, Interval}) ->
 is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
   is_empty(PositiveEdge)
     andalso is_empty(NegativeEdge).
+
+
+normalize(Ty, Fixed) -> normalize(Ty, [], [], Fixed).
+
+normalize(0, _, _, _) -> [[]]; % satisfiable
+normalize({terminal, Atom}, PVar, NVar, Fixed) ->
+  ty_interval:normalize(Atom, PVar, NVar, Fixed);
+normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar, Fixed) ->
+  constraint_set:merge_and_meet(
+    normalize(PositiveEdge, [Variable | PVar], NVar, Fixed),
+    normalize(NegativeEdge, PVar, [Variable | NVar], Fixed)
+  ).
 
 
 -ifdef(TEST).

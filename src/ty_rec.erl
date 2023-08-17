@@ -13,7 +13,7 @@
 % top type constructors
 -export([function/0, atom/0, interval/0, tuple/0]).
 
--export([is_subtype/2, normalize/1]).
+-export([is_equivalent/2, is_subtype/2, normalize/2]).
 
 -record(ty, {atom, interval, tuple, function}).
 
@@ -33,6 +33,9 @@ is_subtype(TyRef1, TyRef2) ->
   NewTy = intersect(TyRef1, ty_rec:negate(TyRef2)),
 
   is_empty(NewTy).
+
+is_equivalent(TyRef1, TyRef2) ->
+  is_subtype(TyRef1, TyRef2) andalso is_subtype(TyRef2, TyRef1).
 
 % ======
 % Type constructors
@@ -189,12 +192,12 @@ is_any(_Arg0) ->
 
 
 
-normalize(TyRef) ->
+normalize(TyRef, Fixed) ->
   % TOOD memoize check
 
   Ty = ty_ref:load(TyRef),
-  AtomNormalize = dnf_var_ty_atom:normalize(Ty#ty.atom),
-  io:format(user, "~p~n", [AtomNormalize]),
+  AtomNormalize = dnf_var_ty_atom:normalize(Ty#ty.atom, Fixed),
+%%  IntervalNormalize = dnf_var_ty_interval:normalize(Ty#ty.interval, Fixed),
 
 %%    andalso dnf_var_int:is_empty(Ty#ty.interval)
 %%    andalso (
@@ -209,6 +212,7 @@ normalize(TyRef) ->
 %%        end
 %%      end
 %%  ).
-  AtomNormalize.
+  Normalized = AtomNormalize,
+  Normalized.
 
 %%  erlang:error("todo").

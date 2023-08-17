@@ -8,7 +8,7 @@
 -export([equal/2, compare/2]).
 
 -behavior(var).
--export([new/1]).
+-export([new/1, smallest/3, normalize/5]).
 
 -record(var, {id, name}).
 -type var() :: #var{id :: integer(), name :: string()}.
@@ -31,12 +31,45 @@ compare(#var{id = Id1}, #var{id = Id2}) when Id1 < Id2 -> -1;
 compare(#var{id = Id1}, #var{id = Id2}) when Id1 > Id2 -> +1;
 compare(_, _) -> 0.
 
+leq(#var{id = Id1}, #var{id = Id2}) -> Id1 =< Id2.
+
 -spec new(string()) -> var().
 new(Name) ->
   NewId = ets:update_counter(?VAR_ETS, variable_id, {2,1}),
   #var{id = NewId, name = Name}.
 
+% P U N is not empty!
+smallest(P, N, Fix) ->
+  true = (length(P) + length(N)) > 0, % TODO comment out sanity check
+  % fixed variables are higher order than all non-fixed ones
+  Pp = [{pos, V} || V <- P, not sets:is_element(V, Fix)],
+  Nn = [{neg, V} || V <- N, not sets:is_element(V, Fix)],
 
+  Rest = [{delta, V} || V <- P ++ N, sets:is_element(V, Fix)],
+
+  Sort = fun({_, V}, {_, V2}) -> leq(V, V2) end,
+  [X | Z] = lists:sort(Sort, Pp++Nn) ++ lists:sort(Sort, Rest),
+
+  {X, Z}.
+
+
+% (NTLV rule)
+normalize(Ty, PVar, NVar, Fixed, VarToTy) ->
+  SmallestVar = ty_variable:smallest(PVar, NVar, Fixed),
+  case SmallestVar of
+    {{pos, Var}, Others} ->
+      io:format(user, "Single out positive Variable ~p and Rest: ~p~n", [Var, Others]),
+      TyResult = lists:foldl(fun(V, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
+      [[{Var, ty_rec:empty(), ty_rec:negate(TyResult)}]];
+    {{neg, Var}, Others} ->
+      io:format(user, "Single out negative Variable ~p and Rest: ~p~n", [Var, Others]),
+      TyResult = lists:foldl(fun(V, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
+      [[{Var, TyResult, ty_rec:any()}]];
+    {{delta, _}, _} ->
+      % part 1 paper Lemma C.3 and C.11 all fixed variables can be eliminated
+      io:format(user, "Normalize all fixed variables done! ~p~n", [Ty]),
+      ty_rec:normalize(Ty, Fixed)
+  end.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
