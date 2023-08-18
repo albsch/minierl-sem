@@ -176,43 +176,32 @@ is_any(_Arg0) ->
   erlang:error(any_not_implemented). % TODO needed?
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 normalize(TyRef, Fixed) ->
-  % TOOD memoize check
-
   Ty = ty_ref:load(TyRef),
   AtomNormalize = dnf_var_ty_atom:normalize(Ty#ty.atom, Fixed),
-%%  IntervalNormalize = dnf_var_ty_interval:normalize(Ty#ty.interval, Fixed),
-
-%%    andalso dnf_var_int:is_empty(Ty#ty.interval)
-%%    andalso (
-%%      begin
-%%        case ty_ref:is_empty_memoized(TyRef) of
-%%          true -> true;
-%%          miss ->
-%%            % memoize
-%%            ok = ty_ref:memoize(TyRef),
-%%            dnf_var_ty_tuple:is_empty(Ty#ty.tuple)
-%%              andalso dnf_var_ty_function:is_empty(Ty#ty.function)
-%%        end
-%%      end
-%%  ).
-  Normalized = AtomNormalize,
-  Normalized.
-
-%%  erlang:error("todo").
+  case AtomNormalize of
+    [] -> [];
+    _ ->
+      IntervalNormalize = dnf_var_int:normalize(Ty#ty.interval, Fixed),
+      Res1 = constraint_set:merge_and_meet(AtomNormalize, IntervalNormalize),
+      case Res1 of
+        [] -> [];
+        _ ->
+          begin
+            case ty_ref:is_normalized_memoized(TyRef, Fixed) of
+              true -> [[]];
+              miss ->
+                % memoize
+                ok = ty_ref:memoize_normalize(TyRef, Fixed),
+                Res2 = dnf_var_ty_tuple:normalize(Ty#ty.tuple, Fixed),
+                Res3 = constraint_set:merge_and_meet(Res1, Res2),
+                case Res3 of
+                  [] -> [];
+                  _ ->
+                    Res4 = dnf_var_ty_function:normalize(Ty#ty.function, Fixed),
+                    constraint_set:merge_and_meet(Res3, Res4)
+                end
+            end
+          end
+      end
+  end.

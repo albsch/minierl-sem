@@ -1,7 +1,7 @@
 -module(constraint_set).
 
 %% API
--export([merge_and_meet/2]).
+-export([merge_and_meet/2, merge_and_join/2]).
 
 merge_and_meet([], _Set2) -> [];
 merge_and_meet(_Set1, []) -> [];

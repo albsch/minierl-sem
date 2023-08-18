@@ -2,14 +2,16 @@
 -vsn({1,3,3}).
 
 -export([any/0, store/1, load/1, new_ty_ref/0, define_ty_ref/2, is_empty_cached/1, store_is_empty_cached/2, store_recursive_variable/2, check_recursive_variable/1]).
--export([memoize/1, is_empty_memoized/1, reset/0]).
+-export([memoize/1, is_empty_memoized/1, reset/0, memoize_normalize/2, is_normalized_memoized/2]).
 
 -on_load(setup_ets/0).
 -define(TY_UTIL, ty_counter).        % counter store
 -define(TY_MEMORY, ty_mem).          % id -> ty
 -define(TY_UNIQUE_TABLE, ty_unique). % ty -> id
 
--define(EMPTY_MEMO, memoize_ty_ets).        % ty_ref -> true
+-define(EMPTY_MEMO, memoize_ty_ets).                            % ty_ref -> true
+-define(EMPTY_MEMO_NORMALIZE, memoize_normalize_ty_ets).        % ty_ref -> true
+
 -define(EMPTY_CACHE, is_empty_memoize_ets). % ty_rec -> true/false
 
 % helper table to construct recursive definitions properly
@@ -18,7 +20,7 @@
 -define(RECURSIVE_TABLE, remember_recursive_variables_ets).
 
 all_tables() ->
-  [?TY_UNIQUE_TABLE, ?TY_MEMORY, ?TY_UTIL, ?EMPTY_MEMO, ?EMPTY_CACHE, ?RECURSIVE_TABLE].
+  [?TY_UNIQUE_TABLE, ?TY_MEMORY, ?TY_UTIL, ?EMPTY_MEMO, ?EMPTY_CACHE, ?RECURSIVE_TABLE, ?EMPTY_MEMO_NORMALIZE].
 
 reset() ->
   ets:delete(?EMPTY_MEMO),
@@ -112,7 +114,7 @@ store(Ty) ->
   case Object of
     [] ->
       Id = ets:update_counter(?TY_UTIL, ty_number, {2, 1}),
-%%      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
+      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
       ets:insert(?TY_UNIQUE_TABLE, {Ty, Id}),
       ets:insert(?TY_MEMORY, {Id, Ty}),
       {ty_ref, Id};
@@ -125,8 +127,19 @@ memoize({ty_ref, Id}) ->
   ets:insert(?EMPTY_MEMO, {Id, true}),
   ok.
 
+memoize_normalize({ty_ref, Id}, Fixed) ->
+  ets:insert(?EMPTY_MEMO_NORMALIZE, {{Id, Fixed}, true}),
+  ok.
+
 is_empty_memoized({ty_ref, Id}) ->
   Object = ets:lookup(?EMPTY_MEMO, Id),
+  case Object of
+    [] -> miss;
+    [{_, true}] -> true
+  end.
+
+is_normalized_memoized({ty_ref, Id}, Fixed) ->
+  Object = ets:lookup(?EMPTY_MEMO_NORMALIZE, {Id, Fixed}),
   case Object of
     [] -> miss;
     [{_, true}] -> true

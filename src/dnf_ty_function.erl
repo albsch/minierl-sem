@@ -8,7 +8,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1]).
+-export([eval/1, is_empty/1, is_any/1, normalize/4]).
 
 -export([function/1]).
 
@@ -80,15 +80,70 @@ explore_function(T1, T2, []) ->
 explore_function(T1, T2, [Function | P]) ->
   ty_rec:is_empty(T1) orelse ty_rec:is_empty(T2)
   orelse
-  begin
-    S1 = ty_function:domain(Function),
-    S2 = ty_function:codomain(Function),
-    explore_function(T1, ty_rec:intersect(T2, S2), P)
-      andalso
-      explore_function(ty_rec:diff(T1, S1), T2, P)
-      end.
+    begin
+      S1 = ty_function:domain(Function),
+      S2 = ty_function:codomain(Function),
+      explore_function(T1, ty_rec:intersect(T2, S2), P)
+        andalso
+        explore_function(ty_rec:diff(T1, S1), T2, P)
+    end.
+
+normalize(TyFunction, [], [], Fixed) ->
+  % optimized NArrow rule
+  normalize_no_vars(TyFunction, ty_rec:empty(), [], [], Fixed);
+normalize(DnfTyFunction, PVar, NVar, Fixed) ->
+  Ty = ty_rec:function(DnfTyFunction),
+  % ntlv rule
+  ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:function(dnf_var_ty_function:var(Var)) end).
 
 
+normalize_no_vars(0, _, _, _, _Fixed) -> [[]]; % empty
+normalize_no_vars({terminal, 1}, _, _, [], _Fixed) -> []; % non-empty
+normalize_no_vars({terminal, 1}, S, P, [Function | N], Fixed) ->
+  R1 = begin
+    T1 = ty_function:domain(Function),
+    T2 = ty_function:codomain(Function),
+    %% ∃ T1-->T2 ∈ N s.t.
+    %%   T1 is in the domain of the function
+    %%   S is the union of all domains of the positive function intersections
+    X1 = ty_rec:normalize(ty_rec:intersect(T1, ty_rec:negate(S)), Fixed),
+    X2 = explore_function_norm(T1, ty_rec:negate(T2), P, Fixed),
+    constraint_set:merge_and_meet(X1, X2)
+  end,
+  %% Continue searching for another arrow ∈ N
+  R2 = normalize_no_vars({terminal, 1}, S, P, N, Fixed),
+  constraint_set:merge_and_join(R1, R2)
+;
+normalize_no_vars({node, Function, L_BDD, R_BDD}, S, P, Negated, Fixed) ->
+  T1 = ty_function:domain(Function),
+
+  % TODO lazy
+  constraint_set:merge_and_meet(
+    normalize_no_vars(L_BDD, ty_rec:union(S, T1), [Function | P], Negated, Fixed),
+    normalize_no_vars(R_BDD, S, P, [Function | Negated], Fixed)
+  ).
+
+explore_function_norm(T1, T2, [], Fixed) ->
+  % TODO lazy
+  constraint_set:merge_and_join(
+    ty_rec:normalize(T1, Fixed),
+    ty_rec:normalize(T2, Fixed)
+  );
+explore_function_norm(T1, T2, [Function | P], Fixed) ->
+  % TODO lazy
+  NT1 = ty_rec:normalize(T1, Fixed),
+  NT2 = ty_rec:normalize(T2, Fixed),
+
+  NT3 =
+    begin
+      S1 = ty_function:domain(Function),
+      S2 = ty_function:codomain(Function),
+      NS1 = explore_function_norm(T1, ty_rec:intersect(T2, S2), P, Fixed),
+      NS2 = explore_function_norm(ty_rec:diff(T1, S1), T2, P, Fixed),
+      constraint_set:merge_and_meet(NS1, NS2)
+    end,
+
+  constraint_set:merge_and_join(NT1, constraint_set:merge_and_join(NT2, NT3)).
 
 
 

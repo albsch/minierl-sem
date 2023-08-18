@@ -63,7 +63,9 @@ normalize(Ty, PVar, NVar, Fixed, VarToTy) ->
       [[{Var, ty_rec:empty(), ty_rec:negate(TyResult)}]];
     {{neg, Var}, Others} ->
       io:format(user, "Single out negative Variable ~p and Rest: ~p~n", [Var, Others]),
+      io:format(user,"Input Ty: ~p Others: ~p~n", [ty_ref:load(Ty), Others]),
       TyResult = lists:foldl(fun(V, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
+      io:format(user,"Result Ty: ~p~n", [ty_ref:load(TyResult)]),
       [[{Var, TyResult, ty_rec:any()}]];
     {{delta, _}, _} ->
       % part 1 paper Lemma C.3 and C.11 all fixed variables can be eliminated

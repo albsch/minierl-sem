@@ -91,6 +91,8 @@ union(I = {Terminal, Element}, A, B) ->
   end.
 
 negate(I, 0) -> any(I);
+% FIXME HACK why is this branch reached? it should always be a {terminal, 1}, not a raw 1
+negate(_I, 1) -> 0;
 negate(I = {Terminal, _}, TN = {terminal, A}) ->
   case is_any(I, TN) of
     true -> 0;

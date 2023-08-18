@@ -8,7 +8,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1]).
+-export([eval/1, is_empty/1, is_any/1, normalize/2]).
 
 -export([var/1, tuple/1]).
 
@@ -51,6 +51,18 @@ is_empty({terminal, Tuple}) ->
 is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
   is_empty(PositiveEdge)
     and is_empty(NegativeEdge).
+
+normalize(Ty, Fixed) -> normalize(Ty, [], [], Fixed).
+
+normalize(0, _, _, _) -> [[]]; % satisfiable
+normalize({terminal, Tuple}, PVar, NVar, Fixed) ->
+  dnf_ty_tuple:normalize(Tuple, PVar, NVar, Fixed);
+normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar, Fixed) ->
+  io:format(user,"Normalizing tuple node: ~p ~p~n", [PositiveEdge, NegativeEdge]),
+  constraint_set:merge_and_meet(
+    normalize(PositiveEdge, [Variable | PVar], NVar, Fixed),
+    normalize(NegativeEdge, PVar, [Variable | NVar], Fixed)
+  ).
 
 
 
