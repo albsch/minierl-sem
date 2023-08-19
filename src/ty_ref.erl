@@ -2,7 +2,7 @@
 -vsn({1,3,3}).
 
 -export([any/0, store/1, load/1, new_ty_ref/0, define_ty_ref/2, is_empty_cached/1, store_is_empty_cached/2, store_recursive_variable/2, check_recursive_variable/1]).
--export([memoize/1, is_empty_memoized/1, reset/0, memoize_normalize/2, is_normalized_memoized/2]).
+-export([memoize/1, is_empty_memoized/1, reset/0, is_normalized_memoized/3]).
 
 -on_load(setup_ets/0).
 -define(TY_UTIL, ty_counter).        % counter store
@@ -127,9 +127,9 @@ memoize({ty_ref, Id}) ->
   ets:insert(?EMPTY_MEMO, {Id, true}),
   ok.
 
-memoize_normalize({ty_ref, Id}, Fixed) ->
-  ets:insert(?EMPTY_MEMO_NORMALIZE, {{Id, Fixed}, true}),
-  ok.
+%%memoize_normalize(Id, _Fixed, M) ->
+%%  ets:insert(?EMPTY_MEMO_NORMALIZE, {{Id, Fixed}, true}),
+%%  ok.
 
 is_empty_memoized({ty_ref, Id}) ->
   Object = ets:lookup(?EMPTY_MEMO, Id),
@@ -138,11 +138,11 @@ is_empty_memoized({ty_ref, Id}) ->
     [{_, true}] -> true
   end.
 
-is_normalized_memoized({ty_ref, Id}, Fixed) ->
-  Object = ets:lookup(?EMPTY_MEMO_NORMALIZE, {Id, Fixed}),
+is_normalized_memoized(Id, _Fixed, M) ->
+  Object = sets:is_element(Id, M),
   case Object of
-    [] -> miss;
-    [{_, true}] -> true
+    false -> miss;
+    true -> true
   end.
 
 is_empty_cached({ty_ref, Id}) ->

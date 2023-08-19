@@ -13,7 +13,7 @@
 % top type constructors
 -export([function/0, atom/0, interval/0, tuple/0]).
 
--export([is_equivalent/2, is_subtype/2, normalize/2]).
+-export([is_equivalent/2, is_subtype/2, normalize/3]).
 
 -record(ty, {atom, interval, tuple, function}).
 
@@ -176,32 +176,27 @@ is_any(_Arg0) ->
   erlang:error(any_not_implemented). % TODO needed?
 
 
-normalize(TyRef, Fixed) ->
+normalize(TyRef, Fixed, M) ->
   Ty = ty_ref:load(TyRef),
-  AtomNormalize = dnf_var_ty_atom:normalize(Ty#ty.atom, Fixed),
+  AtomNormalize = dnf_var_ty_atom:normalize(Ty#ty.atom, Fixed, M),
   case AtomNormalize of
     [] -> [];
     _ ->
-      IntervalNormalize = dnf_var_int:normalize(Ty#ty.interval, Fixed),
+      IntervalNormalize = dnf_var_int:normalize(Ty#ty.interval, Fixed, M),
       Res1 = constraint_set:merge_and_meet(AtomNormalize, IntervalNormalize),
       case Res1 of
         [] -> [];
         _ ->
           begin
-            case ty_ref:is_normalized_memoized(TyRef, Fixed) of
-              true -> [[]];
-              miss ->
-                % memoize
-                ok = ty_ref:memoize_normalize(TyRef, Fixed),
-                Res2 = dnf_var_ty_tuple:normalize(Ty#ty.tuple, Fixed),
+                Res2 = dnf_var_ty_tuple:normalize(Ty#ty.tuple, Fixed, M),
                 Res3 = constraint_set:merge_and_meet(Res1, Res2),
                 case Res3 of
                   [] -> [];
                   _ ->
-                    Res4 = dnf_var_ty_function:normalize(Ty#ty.function, Fixed),
+                    Res4 = dnf_var_ty_function:normalize(Ty#ty.function, Fixed, M),
                     constraint_set:merge_and_meet(Res3, Res4)
                 end
-            end
+%%            end
           end
       end
   end.

@@ -1,6 +1,7 @@
 -module(constraint_set).
 
 %% API
+-export([is_smaller/2]).
 -export([merge_and_meet/2, merge_and_join/2]).
 
 merge_and_meet([], _Set2) -> [];
@@ -29,12 +30,10 @@ nunion(S = [{_, _, _} | _C1], [Z = {_, _, _} | C2]) ->
   [Z] ++ nunion(C2, S).
 
 
-
-
 merge_and_join([[]], _Set2) -> [[]];
 merge_and_join(_Set1, [[]]) -> [[]];
-merge_and_join([], Set2) -> Set2;
-merge_and_join(Set1, []) -> Set1;
+merge_and_join([], Set) -> Set;
+merge_and_join(Set, []) -> Set;
 merge_and_join(S1, S2) ->
   MayAdd = fun (S, Con) -> (not (has_smaller_constraint(Con, S))) end,
   S22 = lists:filter(fun(C) -> MayAdd(S1, C) end, S2),
@@ -63,3 +62,56 @@ is_smaller([{V1, _, _} | _C1], [{V2, _, _} | _C2]) when V1 < V2 ->
   false;
 is_smaller(C1, [{_V2, _, _} | C2]) ->
   is_smaller(C1, C2).
+
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+smaller_test() ->
+  % {(β≤0)} <: {(β≤0) (β≤α)}
+  Alpha = ty_variable:new("alpha"),
+  Beta = ty_variable:new("beta"),
+  C1 = [{Beta, ty_rec:empty(), ty_rec:empty()}],
+  C2 = [{Alpha, Beta, ty_rec:any()}, {Beta, ty_rec:empty(), ty_rec:empty()}],
+
+  true = is_smaller(C1, C2),
+  false = is_smaller(C2, C1),
+  ok.
+
+smaller2_test() ->
+  % C1 :: {(atom≤β≤1)}
+  % C2 :: {(   1≤β≤1)}
+  Beta = ty_variable:new("beta"),
+  Atom = ty_rec:atom(dnf_var_ty_atom:any()), % replacement for bool
+  C1 = [{Beta, Atom,         ty_rec:any()}],
+  C2 = [{Beta, ty_rec:any(), ty_rec:any()}],
+
+  % C1 =< C2 iff
+  %        (beta, >=, atom) in C1
+  %     => (beta, >=, 1)    in C2 such that 1 >= atom (true)
+  true = is_smaller(C1, C2),
+  ok.
+
+paper_example_test() ->
+  % C1 :: {(β≤α≤1)    (0≤β≤0)} :: {(β≤α)    (β≤0)}
+  % C2 :: {(β≤α≤1) (atom≤β≤1)} :: {(atom≤β) (β≤α)}
+  % C3 :: {           (0≤β≤0)} :: {(0≤β)         }
+  % C4 :: {(β≤α≤1)    (1≤β≤1)} :: {(1≤β)    (β≤α)}
+  Alpha = ty_variable:new("alpha"),
+  Beta = ty_variable:new("beta"),
+  BetaTy = ty_rec:variable(ty_variable:new("beta")),
+  Atom = ty_rec:atom(dnf_var_ty_atom:any()),
+  C1 = [{Alpha, BetaTy, ty_rec:any()}, {Beta, ty_rec:empty(), ty_rec:empty()}],
+  C2 = [{Alpha, BetaTy, ty_rec:any()}, {Beta, Atom, ty_rec:any()}],
+  C3 = [{Beta, ty_rec:empty(), ty_rec:empty()}],
+  C4 = [{Alpha, BetaTy, ty_rec:any()}, {Beta, ty_rec:any(), ty_rec:any()}],
+
+  true = is_smaller(C2, C4),
+  false = is_smaller(C4, C2),
+
+  true = is_smaller(C3, C1),
+  false = is_smaller(C1, C3),
+
+  ok.
+
+-endif.

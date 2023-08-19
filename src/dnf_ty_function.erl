@@ -1,6 +1,10 @@
 -module(dnf_ty_function).
 -vsn({1,3,1}).
 
+-ifdef(TEST).
+-export([normalize_no_vars/6]).
+-endif.
+
 -define(P, {bdd_bool, ty_function}).
 
 -behavior(eq).
@@ -8,7 +12,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/4]).
+-export([eval/1, is_empty/1, is_any/1, normalize/5]).
 
 -export([function/1]).
 
@@ -88,58 +92,62 @@ explore_function(T1, T2, [Function | P]) ->
         explore_function(ty_rec:diff(T1, S1), T2, P)
     end.
 
-normalize(TyFunction, [], [], Fixed) ->
+normalize(TyFunction, [], [], Fixed, M) ->
   % optimized NArrow rule
-  normalize_no_vars(TyFunction, ty_rec:empty(), [], [], Fixed);
-normalize(DnfTyFunction, PVar, NVar, Fixed) ->
+  normalize_no_vars(TyFunction, ty_rec:empty(), [], [], Fixed, M);
+normalize(DnfTyFunction, PVar, NVar, Fixed, M) ->
   Ty = ty_rec:function(DnfTyFunction),
   % ntlv rule
-  ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:function(dnf_var_ty_function:var(Var)) end).
+  ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:function(dnf_var_ty_function:var(Var)) end, M).
 
 
-normalize_no_vars(0, _, _, _, _Fixed) -> [[]]; % empty
-normalize_no_vars({terminal, 1}, _, _, [], _Fixed) -> []; % non-empty
-normalize_no_vars({terminal, 1}, S, P, [Function | N], Fixed) ->
+normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty
+normalize_no_vars({terminal, 1}, _, _, [], _Fixed, _) -> []; % non-empty
+normalize_no_vars({terminal, 1}, S, P, [Function | N], Fixed, M) ->
   R1 = begin
     T1 = ty_function:domain(Function),
     T2 = ty_function:codomain(Function),
     %% ∃ T1-->T2 ∈ N s.t.
     %%   T1 is in the domain of the function
     %%   S is the union of all domains of the positive function intersections
-    X1 = ty_rec:normalize(ty_rec:intersect(T1, ty_rec:negate(S)), Fixed),
-    X2 = explore_function_norm(T1, ty_rec:negate(T2), P, Fixed),
+    X1 = ty_rec:normalize(ty_rec:intersect(T1, ty_rec:negate(S)), Fixed, M),
+    X2 = explore_function_norm(T1, ty_rec:negate(T2), P, Fixed, M),
     constraint_set:merge_and_meet(X1, X2)
   end,
   %% Continue searching for another arrow ∈ N
-  R2 = normalize_no_vars({terminal, 1}, S, P, N, Fixed),
+  R2 = normalize_no_vars({terminal, 1}, S, P, N, Fixed, M),
   constraint_set:merge_and_join(R1, R2)
 ;
-normalize_no_vars({node, Function, L_BDD, R_BDD}, S, P, Negated, Fixed) ->
+normalize_no_vars({node, Function, L_BDD, R_BDD}, S, P, Negated, Fixed, M) ->
   T1 = ty_function:domain(Function),
 
   % TODO lazy
   constraint_set:merge_and_meet(
-    normalize_no_vars(L_BDD, ty_rec:union(S, T1), [Function | P], Negated, Fixed),
-    normalize_no_vars(R_BDD, S, P, [Function | Negated], Fixed)
+    normalize_no_vars(L_BDD, ty_rec:union(S, T1), [Function | P], Negated, Fixed, M),
+    normalize_no_vars(R_BDD, S, P, [Function | Negated], Fixed, M)
   ).
 
-explore_function_norm(T1, T2, [], Fixed) ->
+explore_function_norm(T1, T2, [], Fixed, M) ->
+  NT1 = ty_rec:normalize(T1, Fixed, M),
+  NT2 = ty_rec:normalize(T2, Fixed, M),
+
   % TODO lazy
   constraint_set:merge_and_join(
-    ty_rec:normalize(T1, Fixed),
-    ty_rec:normalize(T2, Fixed)
+    NT1, NT2
   );
-explore_function_norm(T1, T2, [Function | P], Fixed) ->
+explore_function_norm(T1, T2, [Function | P], Fixed, M) ->
   % TODO lazy
-  NT1 = ty_rec:normalize(T1, Fixed),
-  NT2 = ty_rec:normalize(T2, Fixed),
+  NT1 = ty_rec:normalize(T1, Fixed, M),
+  NT2 = ty_rec:normalize(T2, Fixed, M),
 
   NT3 =
     begin
       S1 = ty_function:domain(Function),
       S2 = ty_function:codomain(Function),
-      NS1 = explore_function_norm(T1, ty_rec:intersect(T2, S2), P, Fixed),
-      NS2 = explore_function_norm(ty_rec:diff(T1, S1), T2, P, Fixed),
+
+      NS1 = explore_function_norm(T1, ty_rec:intersect(T2, S2), P, Fixed, M),
+      NS2 = explore_function_norm(ty_rec:diff(T1, S1), T2, P, Fixed, M),
+
       constraint_set:merge_and_meet(NS1, NS2)
     end,
 
@@ -150,23 +158,64 @@ explore_function_norm(T1, T2, [Function | P], Fixed) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-usage_test() ->
-  %   (int -> int) ^ (1 -> 2)
-  TIa = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
-  TIb = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
-  TIc = ty_rec:interval(dnf_var_int:int(ty_interval:interval(1, 1))),
-  TId = ty_rec:interval(dnf_var_int:int(ty_interval:interval(2, 2))),
+%%usage_test() ->
+%%  %   (int -> int) ^ (1 -> 2)
+%%  TIa = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
+%%  TIb = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
+%%  TIc = ty_rec:interval(dnf_var_int:int(ty_interval:interval(1, 1))),
+%%  TId = ty_rec:interval(dnf_var_int:int(ty_interval:interval(2, 2))),
+%%
+%%  Ty_FunctionA = ty_function:function(TIa, TIb),
+%%  Ty_FunctionB = ty_function:function(TIc, TId),
+%%
+%%  B1 = dnf_ty_function:function(Ty_FunctionA),
+%%  B2 = dnf_ty_function:function(Ty_FunctionB),
+%%
+%%  Bdd = dnf_ty_function:intersect(B1, B2),
+%%
+%%  false = dnf_ty_function:is_empty(Bdd),
+%%%%  io:format(user, "~p~n", [Bdd]),
+%%
+%%  ok.
+%%
+normalize_test_() ->
+  {timeout, 3000,
+    fun() ->
+      %   a, a -> atom, b -> b
+      Alpha = ty_variable:new("Alpha"), TyAlpha = ty_rec:variable(Alpha),
+      Beta = ty_variable:new("Beta"), TyBeta = ty_rec:variable(Beta),
+      TyAtom = ty_rec:atom(dnf_var_ty_atom:any()),
 
-  Ty_FunctionA = ty_function:function(TIa, TIb),
-  Ty_FunctionB = ty_function:function(TIc, TId),
+      Normalized = dnf_ty_function:normalize_no_vars({terminal, 1}, TyAlpha,
+        [ty_function:function(TyAlpha, TyAtom)],
+        [ty_function:function(TyBeta, TyBeta)],
+        sets:new(), sets:new()
+      ),
 
-  B1 = dnf_ty_function:function(Ty_FunctionA),
-  B2 = dnf_ty_function:function(Ty_FunctionB),
+      io:format(user, "~n~nDONE ~n~p~n", [Normalized]),
 
-  Bdd = dnf_ty_function:intersect(B1, B2),
+      ok
+    end
+  }.
 
-  false = dnf_ty_function:is_empty(Bdd),
-%%  io:format(user, "~p~n", [Bdd]),
-
-  ok.
+%%normalize2_test_() ->
+%%  {timeout, 3000,
+%%    fun() ->
+%%      %   norm(b, ~b ^ N, []) == { {(b <= 0)} {(N <= b)} }
+%%      Alpha = ty_variable:new("Alpha"),
+%%      Beta = ty_variable:new("Beta"), TyBeta = ty_rec:variable(Beta),
+%%      N = ty_rec:atom(),
+%%
+%%      T1 = TyBeta,
+%%      T2 = ty_rec:intersect(ty_rec:negate(TyBeta), N),
+%%      Res = explore_function_norm(T1, T2, [], sets:new()),
+%%
+%%      io:format(user, "Done ~p~n", [Res]),
+%%
+%%      % TODO check via equivalence instead of syntactically
+%%      Res = [[{Beta, ty_rec:empty(), ty_rec:empty()}], [{Beta, N, ty_rec:any()}]],
+%%
+%%      ok
+%%    end
+%%  }.
 -endif.

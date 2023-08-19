@@ -76,6 +76,14 @@ example_1_normalize_test() ->
   % α→Bool ≤ β→β
   Res = normalize(f(v(alpha), b(bool)), f(v(beta), v(beta)), sets:new()),
 
-  io:format(user, "Res: ~p~n", [Res]),
+  % one valid solution (minimal)
+  % { {(β≤0) (β≤α)}  {(bool≤β) (β≤α)} }
+
+  % paper solution (also minimal!)
+  % { {(β≤0)}        {(bool≤β) (β≤α)} }
+
+  % normalize solution (not minimal)
+  % { {(bool≤β) (β≤α)}  {(1≤β) (β≤α)}  {(β≤0) (β≤α)} }
+  io:format(user, "Total result:~n~p~n", [Res]),
 
   ok.

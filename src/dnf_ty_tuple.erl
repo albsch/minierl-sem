@@ -8,7 +8,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/4]).
+-export([eval/1, is_empty/1, is_any/1, normalize/5]).
 
 -export([tuple/1]).
 
@@ -75,43 +75,43 @@ phi(S1, S2, [Ty | N]) ->
       end
   ).
 
-normalize(TyTuple, [], [], Fixed) ->
+normalize(TyTuple, [], [], Fixed, M) ->
   % optimized NProd rule
-  normalize_no_vars(TyTuple, ty_rec:any(), ty_rec:any(), _NegatedTuples = [], Fixed);
-normalize(DnfTyTuple, PVar, NVar, Fixed) ->
+  normalize_no_vars(TyTuple, ty_rec:any(), ty_rec:any(), _NegatedTuples = [], Fixed, M);
+normalize(DnfTyTuple, PVar, NVar, Fixed, M) ->
   Ty = ty_rec:tuple(DnfTyTuple),
   % ntlv rule
-  ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:tuple(dnf_var_ty_tuple:var(Var)) end).
+  ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:tuple(dnf_var_ty_tuple:var(Var)) end, M).
 
 
-normalize_no_vars(0, _, _, _, _Fixed) -> [[]]; % empty
-normalize_no_vars({terminal, 1}, S1, S2, N, Fixed) ->
-  phi_norm(S1, S2, N, Fixed);
-normalize_no_vars({node, TyTuple, L_BDD, R_BDD}, BigS1, BigS2, Negated, Fixed) ->
+normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty
+normalize_no_vars({terminal, 1}, S1, S2, N, Fixed, M) ->
+  phi_norm(S1, S2, N, Fixed, M);
+normalize_no_vars({node, TyTuple, L_BDD, R_BDD}, BigS1, BigS2, Negated, Fixed, M) ->
   S1 = ty_tuple:pi1(TyTuple),
   S2 = ty_tuple:pi2(TyTuple),
 
   % TODO lazy
   constraint_set:merge_and_meet(
-    normalize_no_vars(L_BDD, ty_rec:intersect(S1, BigS1), ty_rec:intersect(S2, BigS2), Negated, Fixed),
-    normalize_no_vars(R_BDD, BigS1, BigS2, [TyTuple | Negated], Fixed)
+    normalize_no_vars(L_BDD, ty_rec:intersect(S1, BigS1), ty_rec:intersect(S2, BigS2), Negated, Fixed, M),
+    normalize_no_vars(R_BDD, BigS1, BigS2, [TyTuple | Negated], Fixed, M)
   ).
 
-phi_norm(S1, S2, [], Fixed) ->
+phi_norm(S1, S2, [], Fixed, M) ->
   % TODO lazy
-  T1 = ty_rec:normalize(S1, Fixed),
-  T2 = ty_rec:normalize(S2, Fixed),
+  T1 = ty_rec:normalize(S1, Fixed, M),
+  T2 = ty_rec:normalize(S2, Fixed, M),
   constraint_set:merge_and_join(T1, T2);
-phi_norm(S1, S2, [Ty | N], Fixed) ->
-  T1 = ty_rec:normalize(S1, Fixed),
-  T2 = ty_rec:normalize(S2, Fixed),
+phi_norm(S1, S2, [Ty | N], Fixed, M) ->
+  T1 = ty_rec:normalize(S1, Fixed, M),
+  T2 = ty_rec:normalize(S2, Fixed, M),
 
   T3 =
     begin
       TT1 = ty_tuple:pi1(Ty),
       TT2 = ty_tuple:pi2(Ty),
-      X1 = phi_norm(ty_rec:diff(S1, TT1), S2, N, Fixed),
-      X2 = phi_norm(S1, ty_rec:diff(S2, TT2), N, Fixed),
+      X1 = phi_norm(ty_rec:diff(S1, TT1), S2, N, Fixed, M),
+      X2 = phi_norm(S1, ty_rec:diff(S2, TT2), N, Fixed, M),
       constraint_set:merge_and_meet(X1, X2)
     end,
 

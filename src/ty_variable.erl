@@ -8,7 +8,7 @@
 -export([equal/2, compare/2]).
 
 -behavior(var).
--export([new/1, smallest/3, normalize/5]).
+-export([new/1, smallest/3, normalize/6]).
 
 -record(var, {id, name}).
 -type var() :: #var{id :: integer(), name :: string()}.
@@ -54,23 +54,21 @@ smallest(P, N, Fix) ->
 
 
 % (NTLV rule)
-normalize(Ty, PVar, NVar, Fixed, VarToTy) ->
+normalize(Ty, PVar, NVar, Fixed, VarToTy, Mx) ->
   SmallestVar = ty_variable:smallest(PVar, NVar, Fixed),
   case SmallestVar of
     {{pos, Var}, Others} ->
-      io:format(user, "Single out positive Variable ~p and Rest: ~p~n", [Var, Others]),
-      TyResult = lists:foldl(fun(V, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
+%%      io:format(user, "Single out positive Variable ~p and Rest: ~p~n", [Var, Others]),
+      TyResult = lists:foldl(fun({_, V}, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
       [[{Var, ty_rec:empty(), ty_rec:negate(TyResult)}]];
     {{neg, Var}, Others} ->
-      io:format(user, "Single out negative Variable ~p and Rest: ~p~n", [Var, Others]),
-      io:format(user,"Input Ty: ~p Others: ~p~n", [ty_ref:load(Ty), Others]),
-      TyResult = lists:foldl(fun(V, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
-      io:format(user,"Result Ty: ~p~n", [ty_ref:load(TyResult)]),
+%%      io:format(user, "Single out negative Variable ~p and Rest: ~p~n", [Var, Others]),
+      TyResult = lists:foldl(fun({_, V}, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
       [[{Var, TyResult, ty_rec:any()}]];
     {{delta, _}, _} ->
       % part 1 paper Lemma C.3 and C.11 all fixed variables can be eliminated
-      io:format(user, "Normalize all fixed variables done! ~p~n", [Ty]),
-      ty_rec:normalize(Ty, Fixed)
+%%      io:format(user, "Normalize all fixed variables done! ~p~n", [Ty]),
+      ty_rec:normalize(Ty, Fixed, Mx)
   end.
 
 -ifdef(TEST).

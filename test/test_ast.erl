@@ -82,7 +82,7 @@ subty(T1, T2) ->
 normalize(T, Fixed) ->
   FixedN = sets:from_list(lists:map(
     fun({var, Name}) -> maybe_new_variable(Name) end, sets:to_list(Fixed))),
-  ty_rec:normalize(test_ast:norm(T), FixedN).
+  ty_rec:normalize(test_ast:norm(T), FixedN, sets:new()).
 
 normalize(T1, T2, Fixed) ->
   FixedN = sets:from_list(lists:map(
@@ -93,7 +93,7 @@ normalize(T1, T2, Fixed) ->
   io:format(user, "T1: ~p~n", [ty_ref:load(NT1)]),
   io:format(user, "T2: ~p~n", [ty_ref:load(NT2)]),
   io:format(user, "T3: ~p~n", [ty_ref:load(NT3)]),
-  ty_rec:normalize(NT3, FixedN).
+  ty_rec:normalize(NT3, FixedN, sets:new()).
 
 b() -> atom.
 b(Atom) -> {'atom', Atom}.
