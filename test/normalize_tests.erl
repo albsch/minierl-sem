@@ -1,7 +1,7 @@
 -module(normalize_tests).
 -include_lib("eunit/include/eunit.hrl").
 
--import(test_ast, [norm/1, mu/2, n/1, b/0, b/1, f/2, t/2, i/2, i/1, u/2, u/1, r/1, r/0, none/0, any/0, v/1, subty/2, normalize/3, normalize/2, var_of/1]).
+-import(test_ast, [norm/1, mu/2, n/1, b/0, b/1, f/2, t/2, i/2, i/1, u/2, u/1, r/1, r/0, none/0, any/0, v/1, subty/2, normalize/3, normalize/2, var_of/1, norm_css/1]).
 
 %%simple_normalize_atom_test() ->
 %%  % satisfiable constraint: some_atom <: ANY_atom
@@ -78,12 +78,15 @@ example_1_normalize_test() ->
 
   % one valid solution (minimal)
   % { {(β≤0) (β≤α)}  {(bool≤β) (β≤α)} }
+  Sol = norm_css([
+    [{v(alpha), v(beta), any()}, {v(beta), none(), none()}],
+    [{v(alpha), v(beta), any()}, {v(beta), b(bool), none()}]
+  ]),
+
+  io:format(user, "sol: ~p~n", [Sol]),
+  true = set_of_constraint_sets:set_is_equivalent(Sol, Res),
 
   % paper solution (also minimal!)
   % { {(β≤0)}        {(bool≤β) (β≤α)} }
-
-  % normalize solution (not minimal)
-  % { {(bool≤β) (β≤α)}  {(1≤β) (β≤α)}  {(β≤0) (β≤α)} }
-  io:format(user, "Total result:~n~p~n", [Res]),
 
   ok.

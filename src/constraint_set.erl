@@ -1,8 +1,13 @@
 -module(constraint_set).
 
 %% API
--export([is_smaller/2]).
--export([merge_and_meet/2, merge_and_join/2]).
+-export([set_of_constraint_sets/1, constraint_set/1, constraint/3, constraint/1, is_smaller/2]).
+-export([merge_and_meet/2, merge_and_join/2, has_smaller_constraint_w/2]).
+
+set_of_constraint_sets(S) -> S.
+constraint_set(Cs) when is_list(Cs) -> Cs.
+constraint(Var, Ty1, Ty2) -> {Var, Ty1, Ty2}.
+constraint({Var, Ty1, Ty2}) -> {Var, Ty1, Ty2}.
 
 merge_and_meet([], _Set2) -> [];
 merge_and_meet(_Set1, []) -> [];
@@ -11,10 +16,22 @@ merge_and_meet(Set1, [[]]) -> Set1;
 merge_and_meet(La, Lb) ->
   R = lists:map(fun(E) -> unionlist(Lb, E) end, La),
   R2 = lists:foldl(fun(NewS, All) -> merge_and_join(NewS, All) end, [], R),
-%%  sanity(R2),
-  R2.
+  minimize(R2).
 
 unionlist(L, A) -> lists:map(fun(E) -> nunion(A, E) end, L).
+
+minimize(S) -> minimize(S, S).
+
+minimize([], Result) -> Result;
+minimize([Cs | Others], All) ->
+  NewS = All -- [Cs],
+  case has_smaller_constraint(Cs, NewS) of
+    true ->
+      io:format(user,".~n", []),
+      true = length(NewS) < length(All),
+      minimize(NewS, NewS);
+    _ -> minimize(Others, All)
+  end.
 
 
 nunion([], L) -> L;
@@ -45,6 +62,13 @@ has_smaller_constraint(_Con, []) -> false;
 has_smaller_constraint(Con, [C | S]) ->
   case is_smaller(C, Con) of
     true -> true;
+    _ -> has_smaller_constraint(Con, S)
+  end.
+
+has_smaller_constraint_w(_Con, []) -> false;
+has_smaller_constraint_w(Con, [C | S]) ->
+  case is_smaller(C, Con) of
+    true -> {true, C};
     _ -> has_smaller_constraint(Con, S)
   end.
 
@@ -99,7 +123,7 @@ paper_example_test() ->
   % C4 :: {(β≤α≤1)    (1≤β≤1)} :: {(1≤β)    (β≤α)}
   Alpha = ty_variable:new("alpha"),
   Beta = ty_variable:new("beta"),
-  BetaTy = ty_rec:variable(ty_variable:new("beta")),
+  BetaTy = ty_rec:variable(Beta),
   Atom = ty_rec:atom(dnf_var_ty_atom:any()),
   C1 = [{Alpha, BetaTy, ty_rec:any()}, {Beta, ty_rec:empty(), ty_rec:empty()}],
   C2 = [{Alpha, BetaTy, ty_rec:any()}, {Beta, Atom, ty_rec:any()}],
@@ -112,6 +136,12 @@ paper_example_test() ->
   true = is_smaller(C3, C1),
   false = is_smaller(C1, C3),
 
+  % proper reduce test, C4 is redundant
+  S = [C2, C4, C1],
+  Min = minimize(S),
+  true = length(Min) =:= 2,
+
   ok.
+
 
 -endif.
