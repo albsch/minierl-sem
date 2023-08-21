@@ -4,6 +4,8 @@
 -include_lib("eunit/include/eunit.hrl").
 -import(prop_subty, [limited_ast/0]).
 
+-export([phi_v0/3]).
+
 % current state:
 % v0, v1 and v2a are exponentially slower than v2b and v3
 % v2b is fastest on average

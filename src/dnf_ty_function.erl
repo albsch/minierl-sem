@@ -3,6 +3,8 @@
 
 -ifdef(TEST).
 -export([normalize_no_vars/6]).
+-export([explore_function_norm/5]).
+-export([explore_function_norm_v0/7]).
 -endif.
 
 -define(P, {bdd_bool, ty_function}).
@@ -111,7 +113,10 @@ normalize_no_vars({terminal, 1}, S, P, [Function | N], Fixed, M) ->
     %%   T1 is in the domain of the function
     %%   S is the union of all domains of the positive function intersections
     X1 = ty_rec:normalize(ty_rec:intersect(T1, ty_rec:negate(S)), Fixed, M),
-    X2 = explore_function_norm(T1, ty_rec:negate(T2), P, Fixed, M),
+    X2 = case persistent_term:get(phi_norm_fun, v) of
+           v -> explore_function_norm(T1, ty_rec:negate(T2), P, Fixed, M);
+           v0 -> explore_function_norm_v0(T1, T2, P, ty_rec:empty(), ty_rec:any(), Fixed, M)
+    end,
     constraint_set:merge_and_meet(X1, X2)
   end,
   %% Continue searching for another arrow ∈ N
@@ -125,6 +130,25 @@ normalize_no_vars({node, Function, L_BDD, R_BDD}, S, P, Negated, Fixed, M) ->
   constraint_set:merge_and_meet(
     normalize_no_vars(L_BDD, ty_rec:union(S, T1), [Function | P], Negated, Fixed, M),
     normalize_no_vars(R_BDD, S, P, [Function | Negated], Fixed, M)
+  ).
+
+
+explore_function_norm_v0(T1, T2, [], D , C, Fix, M) ->
+  % (T1 <: D) or (C <: T2)
+  constraint_set:join(
+    ty_rec:normalize(ty_rec:diff(T1, D), Fix, M),
+    ty_rec:normalize(ty_rec:diff(C, T2), Fix, M)
+  );
+% phi(T1, T2, P U {S1 --> S2}, D, C)
+explore_function_norm_v0(T1, T2, [Function | P], D, C, Fix, M) ->
+  S1 = ty_function:domain(Function),
+  S2 = ty_function:codomain(Function),
+  % phi(T1, T2, P, D, C&S2)
+  constraint_set:meet(
+  explore_function_norm_v0(T1, T2, P, D, ty_rec:intersect(C, S2), Fix, M)
+    , % and
+  % phi(T1, T2, P, D|S1, C)
+  explore_function_norm_v0(T1, T2, P, ty_rec:union(D, S1), C, Fix, M)
   ).
 
 explore_function_norm(T1, T2, [], Fixed, M) ->
