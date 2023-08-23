@@ -2,7 +2,7 @@
 
 %% API
 -export([set_of_constraint_sets/1, constraint_set/1, constraint/3, constraint/1, is_smaller/2]).
--export([merge_and_meet/2, merge_and_join/2, has_smaller_constraint_w/2]).
+-export([merge_and_meet/2, merge_and_join/2, has_smaller_constraint_w/2, has_smaller_constraint/2]).
 -export([meet/2, join/2]).
 
 set_of_constraint_sets(S) -> S.
@@ -10,8 +10,18 @@ constraint_set(Cs) when is_list(Cs) -> Cs.
 constraint(Var, Ty1, Ty2) -> {Var, Ty1, Ty2}.
 constraint({Var, Ty1, Ty2}) -> {Var, Ty1, Ty2}.
 
-meet(S1, S2) -> merge_and_meet(S1, S2).
-join(S1, S2) -> merge_and_join(S1, S2).
+meet(S1, S2) ->
+  Res = S1(),
+  case Res of
+    [] -> [];
+    _ -> merge_and_meet(Res, S2())
+  end.
+join(S1, S2) ->
+  Res = S1(),
+  case Res of
+    [[]] -> [[]];
+    _ -> merge_and_join(Res, S2())
+  end.
 
 merge_and_meet([], _Set2) -> [];
 merge_and_meet(_Set1, []) -> [];

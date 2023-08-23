@@ -11,6 +11,7 @@
 % v2b is fastest on average
 % v3 (:= v2a + v2b) is sometimes faster by a constant factor (max 2x), but on average slower by a constant factor ~0.5x
 
+
 % phi from paper covariance and contravariance
 % phi(T1, T2, P0, P+, P-)
 phi_v0(T1, T2, P) -> phi_v0(T1, T2, P, ty_rec:empty(), ty_rec:any()).

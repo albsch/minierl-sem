@@ -90,9 +90,6 @@ normalize(T1, T2, Fixed) ->
   NT1 = test_ast:norm(T1),
   NT2 = ty_rec:negate(test_ast:norm(T2)),
   NT3 = ty_rec:intersect(NT1, NT2),
-  io:format(user, "T1: ~p~n", [ty_ref:load(NT1)]),
-  io:format(user, "T2: ~p~n", [ty_ref:load(NT2)]),
-  io:format(user, "T3: ~p~n", [ty_ref:load(NT3)]),
   ty_rec:normalize(NT3, FixedN, sets:new()).
 
 b() -> atom.

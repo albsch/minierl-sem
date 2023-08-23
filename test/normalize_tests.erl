@@ -71,22 +71,93 @@
 %%  [[]] = normalize(i(t(r(), r()), n(t(r(), r()))), sets:new()),
 %%
 %%  ok.
+%%
+%%example_1_normalize_test() ->
+%%  % α→Bool ≤ β→β
+%%  Res = normalize(f(v(alpha), b(bool)), f(v(beta), v(beta)), sets:new()),
+%%
+%%  % one valid solution (minimal)
+%%  % { {(β≤0) (β≤α)}  {(bool≤β) (β≤α)} }
+%%  Sol = norm_css([
+%%    [{v(alpha), v(beta), any()}, {v(beta), none(), none()}],
+%%    [{v(alpha), v(beta), any()}, {v(beta), b(bool), any()}]
+%%  ]),
+%%
+%%  % if this test case breaks here,
+%%  % that means the computed solution is *more* precise than the expected answer
+%%  true = set_of_constraint_sets:is_smaller(Res, Sol),
+%%  true = set_of_constraint_sets:is_smaller(Sol, Res),
+%%
+%%  % paper solution (also minimal!)
+%%  % { {(β≤0)}        {(bool≤β) (β≤α)} }
+%%  Sol2 = norm_css([
+%%    [{v(beta), none(), none()}],
+%%    [{v(alpha), v(beta), any()}, {v(beta), b(bool), any()}]
+%%  ]),
+%%
+%%  true = set_of_constraint_sets:is_smaller(Res, Sol2),
+%%  % not comparable because alpha is missing in the smaller constraint
+%%  false = set_of_constraint_sets:is_smaller(Sol2, Res),
+%%
+%%  ok.
+%%
+%%
+example_2_normalize_test() ->
+  % (Int∨Bool → Int ≤ α → β)
+  Res = normalize(f(u(r(), b(bool)), r()), f(v(alpha), v(beta)), sets:new()),
 
-example_1_normalize_test() ->
-  % α→Bool ≤ β→β
-  Res = normalize(f(v(alpha), b(bool)), f(v(beta), v(beta)), sets:new()),
-
-  % one valid solution (minimal)
-  % { {(β≤0) (β≤α)}  {(bool≤β) (β≤α)} }
+  % solution
+  % { {α≤0} , {α≤Int∨Bool, Int≤β} }
   Sol = norm_css([
-    [{v(alpha), v(beta), any()}, {v(beta), none(), none()}],
-    [{v(alpha), v(beta), any()}, {v(beta), b(bool), none()}]
+    [{v(alpha), none(), none()}],
+    [{v(alpha), none(), u(r(), b(bool))}, {v(beta), r(), any()}]
   ]),
 
-  io:format(user, "sol: ~p~n", [Sol]),
-  true = set_of_constraint_sets:set_is_equivalent(Sol, Res),
-
-  % paper solution (also minimal!)
-  % { {(β≤0)}        {(bool≤β) (β≤α)} }
+  true = set_of_constraint_sets:is_smaller(Res, Sol),
+  true = set_of_constraint_sets:is_smaller(Sol, Res),
 
   ok.
+
+example_meet_normalize_test() ->
+  % α→Bool ≤ β→β
+  Res1 = normalize(f(v(alpha), b(bool)), f(v(beta), v(beta)), sets:new()),
+
+  % Int∨Bool → Int ≤ α → β
+  Res2 = normalize(f(u(r(), b(bool)), r()), f(v(alpha), v(beta)), sets:new()),
+
+  % meet
+  Res = constraint_set:merge_and_meet(Res1, Res2),
+  io:format(user, "~p~n", [Res]),
+
+  % expected solution
+  % { {α≤0, β≤0} {α≤Int∨Bool, Int≤β, β≤0} {Bool≤β, β≤α, α≤0} {α≤Int∨Bool, Int≤β, Bool≤β, β≤α} }
+  Sol = norm_css([
+    [{v(alpha), none(), none()}, {v(beta), none(), none()}],
+    [{v(alpha), none(), u(r(), b(bool))}, {v(beta), r(), any()}, {v(beta), none(), none()}],
+    [{v(alpha), none(), none()}, {v(alpha), v(beta), any()}, {v(beta), b(bool), any()}],
+    [{v(alpha), none(), u(r(), b(bool))}, {v(alpha), v(beta), any()}, {v(beta), r(), any()}, {v(beta), b(bool), any()}]
+  ]),
+  io:format(user, "~p ~p ~p~n", [Sol, set_of_constraint_sets:is_smaller(Sol, Res), set_of_constraint_sets:is_smaller(Res, Sol)]),
+
+
+
+  ok.
+
+
+test() ->
+
+  [ % Res
+    [{alpha,beta,0}          ,{beta,0,0}],
+    [{alpha,beta,0}          ,{beta,bool,1}],
+    [{alpha,beta,'boolorint'},{beta,int,0}],
+    [{alpha,beta,'boolorint'},{beta,'boolorint',1}]],
+
+  [ % expected
+    [{alpha,0,0}          , {beta,0,0}],
+    [{alpha,0,0}          , {alpha,beta,1}, {beta,bool,1}],
+    [{alpha,0,'boolorint'}, {beta,int,1},   {beta,0,0}],
+    [{alpha,0,'boolorint'}, {alpha,beta,1}, {beta,int,1}, {beta,bool,1}]
+  ]
+  ,
+
+ok.
