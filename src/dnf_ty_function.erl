@@ -14,7 +14,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/5]).
+-export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/2]).
 
 -export([function/1]).
 
@@ -142,6 +142,23 @@ explore_function_norm(T1, T2, [Function | P], Fixed, M) ->
   constraint_set:join(NT1,
     ?F(constraint_set:join(NT2,
       ?F(constraint_set:meet(NS1, NS2))))).
+
+substitute(0, _) -> 0;
+substitute({terminal, 1}, _) ->
+  {terminal, 1};
+substitute({node, TyFunction, L_BDD, R_BDD}, Map) ->
+  S1 = ty_function:domain(TyFunction),
+  S2 = ty_function:codomain(TyFunction),
+
+  NewS1 = ty_rec:substitute(S1, Map),
+  NewS2 = ty_rec:substitute(S2, Map),
+
+  NewTyFunction = ty_function:function(NewS1, NewS2),
+
+  union(
+    intersect(function(NewTyFunction), L_BDD),
+    intersect(negate(function(NewTyFunction)), R_BDD)
+  ).
 
 
 

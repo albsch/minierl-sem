@@ -15,6 +15,8 @@
 
 -export([is_equivalent/2, is_subtype/2, normalize/3]).
 
+-export([substitute/2, pi/2]).
+
 -record(ty, {atom, interval, tuple, function}).
 
 -type ty_ref() :: {ty_ref, integer()}.
@@ -200,3 +202,33 @@ normalize(TyRef, Fixed, M) ->
           end
       end
   end.
+
+% TODO recursive types & memo set
+substitute(TyRef, SubstituteMap) ->
+  #ty{
+    atom = Atoms,
+    interval = Ints,
+    tuple = Tuples,
+    function = Functions
+  } = ty_ref:load(TyRef),
+  ty_ref:store(#ty{
+    atom = dnf_var_ty_atom:substitute(Atoms, SubstituteMap),
+    interval = dnf_var_int:substitute(Ints, SubstituteMap),
+    tuple = dnf_var_ty_tuple:substitute(Tuples, SubstituteMap),
+    function = dnf_var_ty_function:substitute(Functions, SubstituteMap)
+    })
+  .
+
+
+pi(atom, TyRef) ->
+  Ty = ty_ref:load(TyRef),
+  Ty#ty.atom;
+pi(interval, TyRef) ->
+  Ty = ty_ref:load(TyRef),
+  Ty#ty.interval;
+pi(tuple, TyRef) ->
+  Ty = ty_ref:load(TyRef),
+  Ty#ty.tuple;
+pi(function, TyRef) ->
+  Ty = ty_ref:load(TyRef),
+  Ty#ty.function.

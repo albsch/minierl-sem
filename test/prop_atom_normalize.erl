@@ -28,8 +28,8 @@ limited_atom(Size) ->
 prop_only_atoms_either_sat_or_unsat() ->
   ?FORALL(X, limited_ty_atom(),
     begin
-      io:format(user, "~p~n", [ty_ref:load(X)]),
-      Result = ty_rec:normalize(X),
+%%      io:format(user, "~p~n", [ty_ref:load(X)]),
+      Result = ty_rec:normalize(X, sets:new(), sets:new()),
       Result =:= [] orelse Result =:= [[]]
     end
 ).

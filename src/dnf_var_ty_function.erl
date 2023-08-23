@@ -8,7 +8,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/3]).
+-export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
 
 -export([var/1, function/1]).
 
@@ -71,49 +71,27 @@ normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar, Fixed, M) ->
   ).
 
 
+substitute(T, M) -> substitute(T, M, [], []).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
+substitute(0, _, _, _) -> 0;
+substitute({terminal, Function}, Map, Pos, Neg) ->
+  AllPos = lists:map(
+    fun(Var) ->
+      Substitution = maps:get(Var, Map),
+      ty_rec:pi(function, Substitution)
+    end, Pos),
+  AllNeg = lists:map(
+    fun(Var) ->
+      Substitution = maps:get(Var, Map),
+      NewNeg = ty_rec:negate(Substitution),
+      ty_rec:pi(function, NewNeg)
+    end, Neg),
 
-%%usage_test() ->
-%%  %   a1 ^ (int -> int)
-%%  TIa = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
-%%  TIb = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
-%%  Ty_Function = ty_function:function(TIa, TIb),
-%%
-%%  VarA = ty_variable:new("a1"),
-%%
-%%  Dnf_Ty_Function = dnf_ty_function:function(Ty_Function),
-%%
-%%  BVar1 = dnf_var_ty_function:var(VarA),
-%%  BFunctionA = dnf_var_ty_function:function(Dnf_Ty_Function),
-%%
-%%  Bdd = dnf_var_ty_function:intersect(BVar1, BFunctionA),
-%%
-%%  false = dnf_var_ty_function:is_empty(Bdd),
-%%%%  io:format(user, "~p~n", [Bdd]),
-%%
-%%  ok.
+  lists:foldl(fun(Current, All) -> intersect(Current, All) end, function(dnf_ty_function:substitute(Function, Map)), AllPos ++ AllNeg);
 
-normalize_test() ->
-  %   a -> atom ^ ~(b -> b)
-  Alpha = ty_variable:new("Alpha"),
-  Beta = ty_variable:new("Beta"),
-  TyAtom = ty_rec:atom(dnf_var_ty_atom:any()),
-  TyAlpha = ty_rec:variable(Alpha),
-  TyBeta = ty_rec:variable(Beta),
+substitute({node, Variable, PositiveEdge, NegativeEdge}, Map, P, N) ->
 
-  T1 = dnf_var_ty_function:function(dnf_ty_function:function(ty_function:function(TyAlpha, TyAtom))),
-  T2 = dnf_var_ty_function:function(dnf_ty_function:function(ty_function:function(TyBeta, TyBeta))),
-  ToNormalize = dnf_var_ty_function:diff(T1, T2),
+  LBdd = substitute(PositiveEdge, Map, [Variable | P], N),
+  RBdd = substitute(NegativeEdge, Map, P, [Variable | N]),
 
-
-  io:format(user, "to normalize ~p~n", [ToNormalize]),
-
-%%  Res = dnf_var_ty_function:normalize(ToNormalize, sets:new(), sets:new()),
-
-%%  io:format(user, "~n~nDONE ~n~p~n", [Res]),
-
-  ok.
-
--endif.
+  union(LBdd, RBdd).

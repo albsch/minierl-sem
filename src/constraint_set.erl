@@ -3,7 +3,7 @@
 %% API
 -export([set_of_constraint_sets/1, constraint_set/1, constraint/3, constraint/1, is_smaller/2]).
 -export([merge_and_meet/2, merge_and_join/2, has_smaller_constraint_w/2, has_smaller_constraint/2]).
--export([meet/2, join/2]).
+-export([meet/2, join/2, minimize/1]).
 
 set_of_constraint_sets(S) -> S.
 constraint_set(Cs) when is_list(Cs) -> Cs.
@@ -41,7 +41,6 @@ minimize([Cs | Others], All) ->
   NewS = All -- [Cs],
   case has_smaller_constraint(Cs, NewS) of
     true ->
-      io:format(user,".~n", []),
       true = length(NewS) < length(All),
       minimize(NewS, NewS);
     _ -> minimize(Others, All)

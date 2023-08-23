@@ -133,6 +133,12 @@ n(X) -> {negation, X}.
 % the variable intersected with each disjunct unions top-type
 % ===============================
 
+norm_substs([]) -> [];
+norm_substs([Sub | Subs]) ->
+  New = maps:from_list(lists:map(fun({K, V}) -> {var_of(K), norm(V)} end, maps:to_list(Sub))),
+
+  [New | norm_substs(Subs)].
+
 norm_css([]) -> constraint_set:set_of_constraint_sets([]);
 norm_css([Cs | Css]) ->
   constraint_set:set_of_constraint_sets([

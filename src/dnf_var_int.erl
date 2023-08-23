@@ -8,7 +8,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/3]).
+-export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
 
 -export([var/1, int/1]).
 
@@ -68,6 +68,32 @@ normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar, Fixed, M) ->
     normalize(PositiveEdge, [Variable | PVar], NVar, Fixed, M),
     normalize(NegativeEdge, PVar, [Variable | NVar], Fixed, M)
   ).
+
+
+substitute(T, M) -> substitute(T, M, [], []).
+
+substitute(0, _, _, _) -> 0;
+substitute({terminal, Interval}, Map, Pos, Neg) ->
+  AllPos = lists:map(
+    fun(Var) ->
+      Substitution = maps:get(Var, Map),
+      ty_rec:pi(interval, Substitution)
+    end, Pos),
+  AllNeg = lists:map(
+    fun(Var) ->
+      Substitution = maps:get(Var, Map),
+      NewNeg = ty_rec:negate(Substitution),
+      ty_rec:pi(interval, NewNeg)
+    end, Neg),
+
+  lists:foldl(fun(Current, All) -> intersect(Current, All) end, int(Interval), AllPos ++ AllNeg);
+
+substitute({node, Variable, PositiveEdge, NegativeEdge}, Map, P, N) ->
+
+  LBdd = substitute(PositiveEdge, Map, [Variable | P], N),
+  RBdd = substitute(NegativeEdge, Map, P, [Variable | N]),
+
+  union(LBdd, RBdd).
 
 
 -ifdef(TEST).
