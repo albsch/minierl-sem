@@ -79,7 +79,7 @@ normalize(TyTuple, [], [], Fixed, M) ->
   % optimized NProd rule
   normalize_no_vars(TyTuple, ty_rec:any(), ty_rec:any(), _NegatedTuples = [], Fixed, M);
 normalize(DnfTyTuple, PVar, NVar, Fixed, M) ->
-  Ty = ty_rec:tuple(DnfTyTuple),
+  Ty = ty_rec:tuple(dnf_var_ty_tuple:tuple(DnfTyTuple)),
   % ntlv rule
   ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:tuple(dnf_var_ty_tuple:var(Var)) end, M).
 

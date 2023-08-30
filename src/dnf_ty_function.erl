@@ -56,7 +56,7 @@ is_empty(TyDnf) ->
 
 is_empty(0, _, _, _) -> true;
 % TODO should only be {terminal, 1}, not just 1!
-is_empty(1, _, _, []) -> false;
+%%is_empty(1, _, _, []) -> false;
 is_empty({terminal, 1}, _, _, []) -> false;
 is_empty({terminal, 1}, S, P, [Function | N]) ->
   T1 = ty_function:domain(Function),
@@ -100,7 +100,7 @@ normalize(TyFunction, [], [], Fixed, M) ->
   % optimized NArrow rule
   normalize_no_vars(TyFunction, ty_rec:empty(), [], [], Fixed, M);
 normalize(DnfTyFunction, PVar, NVar, Fixed, M) ->
-  Ty = ty_rec:function(DnfTyFunction),
+  Ty = ty_rec:function(dnf_var_ty_function:function(DnfTyFunction)),
   % ntlv rule
   ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:function(dnf_var_ty_function:var(Var)) end, M).
 
