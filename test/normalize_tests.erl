@@ -3,6 +3,10 @@
 
 -import(test_ast, [norm_substs/1, norm/1, mu/2, n/1, b/0, b/1, f/2, t/2, i/2, i/1, u/2, u/1, r/1, r/0, none/0, any/0, v/1, subty/2, normalize/3, normalize/2, var_of/1, norm_css/1]).
 
+simple_empty_test() ->
+  [[]] = normalize(v(alpha), any(), sets:new()),
+  ok.
+
 simple_normalize_atom_test() ->
   % satisfiable constraint: some_atom <: ANY_atom
   [[]] = normalize(b(some_atom), b(), sets:new()),

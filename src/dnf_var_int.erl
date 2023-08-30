@@ -10,7 +10,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
 
--export([var/1, int/1, clean_type/3]).
+-export([var/1, int/1, clean_type/3, all_variables/1]).
 
 -type interval() :: term(). % interval:type()
 -type variable() :: term(). % variable:type()
@@ -110,15 +110,21 @@ clean_type({node, Variable, PositiveEdge, NegativeEdge}, FixedVariables, Positio
     true ->
       VarBdd = dnf_var_int:var(Variable),
       union(intersect(VarBdd, Left), intersect(negate(VarBdd), Right));
-    _ -> % if not fixed -> must be tally (otherwise would be normalized and substituted)
-      % TODO remove sanity check
-      {_, _, "tally_fresh"} = Variable,
+    _ ->
+      % if not fixed -> must be tally (otherwise would be normalized and substituted)
+%%      % TODO remove sanity check
+%%      {_, _, "tally_fresh"} = Variable,
       Ty = for_position(Position),
       union(intersect(Ty, Left), intersect(negate(Ty), Right))
   end.
 
 for_position(covariant) -> empty();
 for_position(contravariant) -> any().
+
+all_variables(0) -> [];
+all_variables({terminal, _}) -> [];
+all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
+  [Variable] ++ all_variables(PositiveEdge) ++ all_variables(NegativeEdge).
 
 
 -ifdef(TEST).

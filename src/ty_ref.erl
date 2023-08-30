@@ -101,7 +101,7 @@ new_ty_ref() ->
   {ty_ref, next_ty_id()}.
 
 define_ty_ref({ty_ref, Id}, Ty) ->
-%%  io:format(user, "Store NEW: ~p :=~n~p~n", [Id, Ty]),
+  io:format(user, "Store NEW: ~p :=~n~p~n", [Id, Ty]),
 %%  % check first if type is not already
 
   Object = ets:lookup(?TY_UNIQUE_TABLE, Ty),
@@ -126,7 +126,7 @@ store(Ty) ->
   case Object of
     [] ->
       Id = ets:update_counter(?TY_UTIL, ty_number, {2, 1}),
-%%      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
+      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
       ets:insert(?TY_UNIQUE_TABLE, {Ty, Id}),
       ets:insert(?TY_MEMORY, {Id, Ty}),
       {ty_ref, Id};

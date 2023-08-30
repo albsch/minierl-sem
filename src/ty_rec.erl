@@ -15,7 +15,7 @@
 
 -export([is_equivalent/2, is_subtype/2, normalize/3]).
 
--export([substitute/2, pi/2, clean_type/2, clean_type/3]).
+-export([substitute/2, pi/2, clean_type/2, clean_type/3, all_variables/1]).
 
 -record(ty, {atom, interval, tuple, function}).
 
@@ -236,7 +236,7 @@ clean_type(TyRef, FixedVars) ->
   clean_type(TyRef, FixedVars, covariant).
 
 clean_type(TyRef, FixedVars, Pos) ->
-  io:format("(~p position) Cleaning generated fresh variables from ~p~n", [Pos, TyRef]),
+%%  io:format("(~p position) Cleaning generated fresh variables from ~p~n", [Pos, TyRef]),
 
   #ty{
     atom = Atoms,
@@ -245,7 +245,7 @@ clean_type(TyRef, FixedVars, Pos) ->
     function = Functions
   } = ty_ref:load(TyRef),
 
-  io:format(user, "Cleaning type: ~p~n", [Functions]),
+%%  io:format(user, "Cleaning type: {~n~p~n~p~n~p~n~p} ~n", [Atoms, Ints, Tuples, Functions]),
   ty_ref:store(#ty{
     atom = dnf_var_ty_atom:clean_type(Atoms, FixedVars, Pos),
     interval = dnf_var_int:clean_type(Ints, FixedVars, Pos),
@@ -253,5 +253,18 @@ clean_type(TyRef, FixedVars, Pos) ->
     function = dnf_var_ty_function:clean_type(Functions, FixedVars, Pos)
   })
 .
+
+all_variables(TyRef) ->
+  #ty{
+    atom = Atoms,
+    interval = Ints,
+    tuple = Tuples,
+    function = Functions
+  } = ty_ref:load(TyRef),
+
+  lists:usort(dnf_var_ty_atom:all_variables(Atoms)
+  ++ dnf_var_int:all_variables(Ints)
+  ++ dnf_var_ty_tuple:all_variables(Tuples)
+  ++ dnf_var_ty_function:all_variables(Functions)).
 
 

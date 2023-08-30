@@ -75,15 +75,17 @@ buggy_old_tally_test() ->
 %%  io:format(user, "Result:~n~p~n", [Res]),
   [Sub1, Sub2] = Res,
   io:format(user, "Sub1:~n~p~n", [lists:map(fun({Var, Ty}) -> {Var, ty_ref:load(Ty)} end, Sub1)]),
+  io:format(user, "Sub2:~n~p~n", [lists:map(fun({Var, Ty}) -> {Var, ty_ref:load(Ty)} end, Sub2)]),
 
-  % ($1, 1) => X_8 ^ !X_12
-  % ($2, 2) => X_9 ^ ATOM U !X_9 ^ X_11 ^ ATOM U X_9 ^ INT U !X_9 ^ X_11 ^ INT U !X_9 ^ !X_11 ^ X_12 ^ INT U !X_9 ^ !X_11 ^ !X_12 ^ 42
-  % $0 => X_10 ^ Atom
-  %     U X_10 ^ Int
-  %     U X_10 ^ Tuple
-  %     U $1 -> $2
+  MSub1 = maps:from_list(Sub1),
+  MSub2 = maps:from_list(Sub2),
+  {S, T} = C1,
+  ModS = ty_rec:substitute(S, MSub1),
+  ModT = ty_rec:substitute(T, MSub1),
+  ModS2 = ty_rec:substitute(S, MSub2),
+  ModT2 = ty_rec:substitute(T, MSub2),
+  io:format(user, "Res:~p~n", [ty_rec:is_subtype(ModS, ModT)]),
+  io:format(user, "Res:~p~n", [ty_rec:is_subtype(ModS2, ModT2)]),
 
-
-  io:format(user, "Sub2:~n~p~n", [Sub2]),
 
   ok.

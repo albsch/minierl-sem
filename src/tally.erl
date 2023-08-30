@@ -78,17 +78,28 @@ unify(EquationList) ->
   % select in E the equation α = tα for smallest α
   [Eq = {eq, Var, TA} | _Tail] = lists:usort(fun({_, Var, _}, {_, Var2, _}) -> ty_variable:compare(Var, Var2) =< 0 end, EquationList),
 
-  % create new recursive type μX
-  MuX = ty_ref:new_ty_ref(),
+  Vars = ty_rec:all_variables(TA),
+  NewTA = case length([Z || Z <- Vars, Z == Var]) of
+    0 ->
+      TA;
+    _ ->
+      error(todo),
+      % create new recursive type μX
+      MuX = ty_ref:new_ty_ref(),
 
-  % define type
-  % μX.(tα{X/α}) (X fresh)
-  Mapping = #{Var => MuX},
-  Inner = ty_rec:substitute(TA, Mapping),
-  ty_ref:define_ty_ref(MuX, ty_ref:load(Inner)),
+      % define type
+      % μX.(tα{X/α}) (X fresh)
+      Mapping = #{Var => MuX},
+      Inner = ty_rec:substitute(TA, Mapping),
+      ty_ref:define_ty_ref(MuX, ty_ref:load(Inner)),
+      MuX
+
+  end,
+
+  NewMap = #{Var => NewTA},
 
   E_ = [
-    {eq, XA, ty_rec:substitute(TAA, Mapping)} ||
+    {eq, XA, ty_rec:substitute(TAA, NewMap)} ||
     (X = {eq, XA, TAA}) <- EquationList, X /= Eq
   ],
 
@@ -96,7 +107,7 @@ unify(EquationList) ->
   true = length(EquationList) - 1 == length(E_),
 
   Sigma = unify(E_),
-  NewTASigma = apply_substitution(MuX, Sigma),
+  NewTASigma = apply_substitution(NewTA, Sigma),
 
   [{Var, NewTASigma}] ++ Sigma.
 
