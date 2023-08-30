@@ -85,6 +85,8 @@ define_any() ->
 
   U1 = ty_rec:union(Ty1, Ty2),
   U2 = ty_rec:union(U1, Ty3),
+  % note: applying the union on U2 and Ty4 already defines ANY at some ty_ref other than 0 automatically
+  % this breaks the property that for every ty there is only one entry in the unique table
   U = ty_rec:union(U2, Ty4),
 
   % define
@@ -99,7 +101,17 @@ new_ty_ref() ->
   {ty_ref, next_ty_id()}.
 
 define_ty_ref({ty_ref, Id}, Ty) ->
-%%  io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
+%%  io:format(user, "Store NEW: ~p :=~n~p~n", [Id, Ty]),
+%%  % check first if type is not already
+
+  Object = ets:lookup(?TY_UNIQUE_TABLE, Ty),
+  case Object of
+    [] -> ok;
+    _ ->
+%%      io:format(user, "Defining a new type even though unique table has the type already!~n~p~n", [Ty]),
+      ok
+  end,
+
   ets:insert(?TY_UNIQUE_TABLE, {Ty, Id}),
   ets:insert(?TY_MEMORY, {Id, Ty}),
   {ty_ref, Id}.
@@ -114,7 +126,11 @@ store(Ty) ->
   case Object of
     [] ->
       Id = ets:update_counter(?TY_UTIL, ty_number, {2, 1}),
-%%      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
+      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
+      case Id of
+        28 -> error(todo);
+        _ -> ok
+      end,
       ets:insert(?TY_UNIQUE_TABLE, {Ty, Id}),
       ets:insert(?TY_MEMORY, {Id, Ty}),
       {ty_ref, Id};

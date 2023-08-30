@@ -6,19 +6,34 @@
   tally/2
 ]).
 
--type ty_varname() :: term().
+% C = {(α → Bool, β → β) , (Int∨Bool → Int , α → β)}
 
--spec tally(constraint:simple_constraints(), sets:set(ty_varname())) -> [substitution:t()] | {error, [{error, string()}]}.
 tally(Constraints, FixedVars) ->
+  % TODO heuristic here and benchmark
+  Normalized = lists:foldl(fun({S, T}, A) ->
+    constraint_set:meet(
+      fun() ->
+        SnT = ty_rec:diff(S, T),
+        ty_rec:normalize(SnT, FixedVars, sets:new())
+      end,
+      fun() -> A end)
+              end, [[]], Constraints),
 
-  logger:notice("Norming!"),
-  N = tally_norm:norm_api(Constraints, FixedVars),
+  % TODO can be moved inside the normalize phase, benchmark difference
+  Saturated = lists:foldl(fun(ConstraintSet, A) ->
+    constraint_set:join(
+      fun() -> constraint_set:merge(ConstraintSet, FixedVars, sets:new()) end,
+      fun() -> A end)
+                           end, [], Normalized),
 
-  erlang:error("TODO").
-%%  M = case N of [] -> {fail, norm}; _ -> N end,
-%%
-%%  S = tally_solve:solve(M, FixedVars),
-%%
+  Saturated,
+
+  case Saturated of
+    [] -> {error, []};
+    _ -> solve(Saturated, FixedVars)
+  end.
+
+
 %%  Min = minimize_solutions(S),
 %%  X = case Min of
 %%    {fail, _X} ->
@@ -30,10 +45,68 @@ tally(Constraints, FixedVars) ->
 %%
 %%  X.
 
--spec tally(constraint:simple_constraints()) -> [substitution:t()] | {error, [{error, string()}]}.
+%%-spec tally(constraint:simple_constraints()) -> [substitution:t()] | {error, [{error, string()}]}.
 tally(Constraints) ->
   tally(Constraints, sets:new()).
 
+solve(SaturatedSetOfConstraintSets, FixedVariables) ->
+  S = ([ solve_single(C, [], FixedVariables) || C <- SaturatedSetOfConstraintSets]),
+
+  RawSubstitutions = [unify(E) || E <- S],
+
+  % replace covariant -> Empty and contravariant -> Any
+
+  % unify produces very ugly types
+  % clean up a bit
+  CleanSubstitution = fun(Substitution, CFix) ->
+    lists:map(fun({Var, Ty}) -> {Var, ty_rec:clean_type(Ty, CFix)} end, Substitution)
+                      end,
+  lists:map(fun(E) -> CleanSubstitution(E, FixedVariables) end, RawSubstitutions).
+
+solve_single([], Equations, _) -> Equations;
+solve_single([{SmallestVar, Left, Right} | Cons], Equations, Fix) ->
+  % constraints are already sorted by variable ordering
+  % smallest variable first
+  FreshTyVar = ty_rec:variable(ty_variable:new("tally_fresh")),
+  NewEq = Equations ++ [{eq, SmallestVar, ty_rec:intersect(ty_rec:union(Left, FreshTyVar), Right)}],
+
+  solve_single(Cons, NewEq, Fix).
+
+unify([]) -> [];
+unify(EquationList) ->
+  % sort to smallest variable
+  % select in E the equation α = tα for smallest α
+  [Eq = {eq, Var, TA} | _Tail] = lists:usort(fun({_, Var, _}, {_, Var2, _}) -> ty_variable:compare(Var, Var2) =< 0 end, EquationList),
+
+  % create new recursive type μX
+  MuX = ty_ref:new_ty_ref(),
+
+  % define type
+  % μX.(tα{X/α}) (X fresh)
+  Mapping = #{Var => MuX},
+  Inner = ty_rec:substitute(TA, Mapping),
+  ty_ref:define_ty_ref(MuX, ty_ref:load(Inner)),
+
+  E_ = [
+    {eq, XA, ty_rec:substitute(TAA, Mapping)} ||
+    (X = {eq, XA, TAA}) <- EquationList, X /= Eq
+  ],
+
+  % TODO remove assert
+  true = length(EquationList) - 1 == length(E_),
+
+  Sigma = unify(E_),
+  NewTASigma = apply_substitution(MuX, Sigma),
+
+  [{Var, NewTASigma}] ++ Sigma.
+
+apply_substitution(Ty, Substitutions) ->
+%%  io:format(user, "Applying: ~p with ~p~n", [Ty, Substitutions]),
+  SubstFun = fun({Var, To}, Tyy) ->
+    Mapping = #{Var => To},
+    ty_rec:substitute(Tyy, Mapping)
+    end,
+  lists:foldl(SubstFun, Ty, Substitutions).
 
 %%minimize_solutions(X = {fail, _}, _) -> X;
 %%minimize_solutions(M, Sym) ->

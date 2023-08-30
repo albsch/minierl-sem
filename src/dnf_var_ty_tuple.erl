@@ -10,7 +10,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
 
--export([var/1, tuple/1]).
+-export([var/1, tuple/1, clean_type/3]).
 
 -type dnf_tuple() :: term().
 -type ty_tuple() :: dnf_tuple(). % ty_tuple:type()
@@ -75,12 +75,12 @@ substitute(0, _, _, _) -> 0;
 substitute({terminal, Tuple}, Map, Pos, Neg) ->
   AllPos = lists:map(
     fun(Var) ->
-      Substitution = maps:get(Var, Map),
+      Substitution = maps:get(Var, Map, ty_rec:variable(Var)),
       ty_rec:pi(tuple, Substitution)
     end, Pos),
   AllNeg = lists:map(
     fun(Var) ->
-      Substitution = maps:get(Var, Map),
+      Substitution = maps:get(Var, Map, ty_rec:variable(Var)),
       NewNeg = ty_rec:negate(Substitution),
       ty_rec:pi(tuple, NewNeg)
     end, Neg),
@@ -93,6 +93,31 @@ substitute({node, Variable, PositiveEdge, NegativeEdge}, Map, P, N) ->
   RBdd = substitute(NegativeEdge, Map, P, [Variable | N]),
 
   union(LBdd, RBdd).
+
+
+clean_type(0, _, _) -> 0;
+clean_type({terminal, Tuple}, Fixed, Position) ->
+  % done
+  {terminal, dnf_ty_tuple:clean_type(Tuple, Fixed, Position)};
+clean_type({node, Variable, PositiveEdge, NegativeEdge}, FixedVariables, Position) ->
+
+  Left = clean_type(PositiveEdge, FixedVariables, Position),
+  Right = clean_type(NegativeEdge, FixedVariables, Position),
+
+  % if variable not in fixed => clean
+  case sets:is_element(Variable, FixedVariables) of
+    true ->
+      VarBdd = dnf_var_ty_tuple:var(Variable),
+      union(intersect(VarBdd, Left), intersect(negate(VarBdd), Right));
+    _ -> % if not fixed -> must be tally (otherwise would be normalized and substituted)
+      % TODO remove sanity check
+      {_, _, "tally_fresh"} = Variable,
+      Ty = for_position(Position),
+      union(intersect(Ty, Left), intersect(negate(Ty), Right))
+  end.
+
+for_position(covariant) -> empty();
+for_position(contravariant) -> any().
 
 
 -ifdef(TEST).

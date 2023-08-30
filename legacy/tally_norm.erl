@@ -385,41 +385,38 @@
 %%
 %%
 %%saturate([], _Memo, _Fix, _Sym) -> [];
-%%saturate([[]], _Memo, _Fix, _Sym) -> [[]];
-%%saturate(S, Memo, Fix, Sym) ->
-%%  Ls = lists:map(fun(E) ->
-%%    saturate_single(E, [], Memo, Fix, Sym) end, S),
-%%  lists:foldl(fun(E, Acc) ->
-%%    lazy_join(E, Acc, Sym)
-%%              end, [], Ls).
-%%
-%%
-%%saturate_single([], Pre, _Memo, _Fix, _Sym) -> [Pre];
-%%saturate_single([X = {_Var, {predef, none}, _Tb} | Cs], Pre, Memo, Fix, Sym) -> saturate_single(Cs, Pre ++ [X], Memo, Fix, Sym);
-%%saturate_single([X = {_Var, _Ta, {predef, any}} | Cs], Pre, Memo, Fix, Sym) -> saturate_single(Cs, Pre ++ [X], Memo, Fix, Sym);
-%%saturate_single([X = {_Var, S, T} | Cs], Pre, Memo, Fix, Sym) ->
-%%  SnT = tintersect([S, tnegate(T)]),
-%%
-%%  T_partitions = dnf:simplify(subty:simple_empty(SnT, Sym)),
-%%
-%%  {_ZeroPartitions, UnknownPartitions} = partition(T_partitions, Memo),
-%%
-%%  case UnknownPartitions of
-%%    [] ->
-%%      saturate_single(Cs, Pre ++ [X], Memo, Fix, Sym);
-%%    _ ->
-%%      case norm_partitions(UnknownPartitions, Memo ++ UnknownPartitions, Fix, Sym)of
-%%        [] -> [];
-%%        [[]] -> saturate_single(Cs, Pre ++ [X], Memo, Fix, Sym);
-%%        SatuAll ->
-%%          NewL = Pre ++ [X] ++ Cs,
-%%          MemoP = Memo ++ UnknownPartitions,
-%%          saturate(lazy_meet(SatuAll, [NewL], Sym), MemoP, Fix, Sym)
-%%      end
-%%  end.
-%%
-%%
-%%
-%%
-%%
-%%
+saturate([[]], _Memo, _Fix, _Sym) -> [[]];
+saturate(S, Memo, Fix, Sym) ->
+  Ls = lists:map(fun(E) ->
+    saturate_single(E, [], Memo, Fix, Sym) end, S),
+  lists:foldl(fun(E, Acc) ->
+    lazy_join(E, Acc, Sym)
+              end, [], Ls).
+
+
+saturate_single([], Pre, _Memo, _Fix, _Sym) -> [Pre];
+saturate_single([X = {_Var, {predef, none}, _Tb} | Cs], Pre, Memo, Fix, Sym) -> saturate_single(Cs, Pre ++ [X], Memo, Fix, Sym);
+saturate_single([X = {_Var, _Ta, {predef, any}} | Cs], Pre, Memo, Fix, Sym) -> saturate_single(Cs, Pre ++ [X], Memo, Fix, Sym);
+saturate_single([X = {_Var, S, T} | Cs], Pre, Memo, Fix, Sym) ->
+  SnT = tintersect([S, tnegate(T)]),
+
+  T_partitions = dnf:simplify(subty:simple_empty(SnT, Sym)),
+
+  {_ZeroPartitions, UnknownPartitions} = partition(T_partitions, Memo),
+
+  case UnknownPartitions of
+    [] ->
+      saturate_single(Cs, Pre ++ [X], Memo, Fix, Sym);
+    _ ->
+      case norm_partitions(UnknownPartitions, Memo ++ UnknownPartitions, Fix, Sym)of
+        [] -> [];
+        [[]] -> saturate_single(Cs, Pre ++ [X], Memo, Fix, Sym);
+        SatuAll ->
+          NewL = Pre ++ [X] ++ Cs,
+          MemoP = Memo ++ UnknownPartitions,
+          saturate(lazy_meet(SatuAll, [NewL], Sym), MemoP, Fix, Sym)
+      end
+  end.
+
+
+

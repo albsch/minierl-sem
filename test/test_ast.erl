@@ -139,6 +139,13 @@ norm_substs([Sub | Subs]) ->
 
   [New | norm_substs(Subs)].
 
+norm_css_basic([]) -> [];
+norm_css_basic([Cs | Css]) ->
+  [ norm_cs_basic(Cs) ] ++ norm_css_basic(Css).
+
+norm_cs_basic([]) -> [];
+norm_cs_basic([{S, T} | Cs]) -> [ {norm(S), norm(T)} ] ++ norm_cs_basic(Cs).
+
 norm_css([]) -> constraint_set:set_of_constraint_sets([]);
 norm_css([Cs | Css]) ->
   constraint_set:set_of_constraint_sets([
@@ -149,6 +156,7 @@ norm_cs([]) -> constraint_set:constraint_set([]);
 norm_cs([{V, Ty1, Ty2} | Cs]) -> constraint_set:constraint_set([
   constraint_set:constraint(var_of(V), norm(Ty1), norm(Ty2))
 ] ++ norm_cs(Cs)).
+
 
 norm(int) ->
   Int = dnf_var_int:any(),

@@ -16,7 +16,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/2]).
 
--export([function/1]).
+-export([function/1, clean_type/3]).
 
 -type ty_ref() :: {ty_ref, integer()}.
 -type dnf_function() :: term().
@@ -55,6 +55,8 @@ is_empty(TyDnf) ->
   ).
 
 is_empty(0, _, _, _) -> true;
+% TODO should only be {terminal, 1}, not just 1!
+is_empty(1, _, _, []) -> false;
 is_empty({terminal, 1}, _, _, []) -> false;
 is_empty({terminal, 1}, S, P, [Function | N]) ->
   T1 = ty_function:domain(Function),
@@ -159,6 +161,28 @@ substitute({node, TyFunction, L_BDD, R_BDD}, Map) ->
     intersect(function(NewTyFunction), L_BDD),
     intersect(negate(function(NewTyFunction)), R_BDD)
   ).
+
+
+
+clean_type(0, _Fixed, _Position) -> 0;
+clean_type({terminal, 1}, _, _) ->
+  {terminal, 1};
+clean_type({node, TyFunction, L_BDD, R_BDD}, Fixed, Position) ->
+  S1 = ty_function:domain(TyFunction),
+  S2 = ty_function:codomain(TyFunction),
+
+  NewS1 = ty_rec:clean_type(S1, Fixed, flip(Position)), % contravariant in domain type
+  NewS2 = ty_rec:clean_type(S2, Fixed, Position),
+
+  NewTyFunction = ty_function:function(NewS1, NewS2),
+
+  union(
+    intersect(function(NewTyFunction), L_BDD),
+    intersect(negate(function(NewTyFunction)), R_BDD)
+  ).
+
+flip(covariant) -> contravariant;
+flip(contravariant) -> covariant.
 
 
 
