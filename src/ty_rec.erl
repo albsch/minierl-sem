@@ -15,7 +15,7 @@
 
 -export([is_equivalent/2, is_subtype/2, normalize/3]).
 
--export([substitute/2, pi/2, clean_type/2, clean_type/3, all_variables/1]).
+-export([substitute/2, pi/2, clean_type/2, clean_type/4, all_variables/1, merge_maps/1, collect_variable_positions/2]).
 
 -record(ty, {atom, interval, tuple, function}).
 
@@ -233,26 +233,21 @@ pi(function, TyRef) ->
   Ty#ty.function.
 
 clean_type(TyRef, FixedVars) ->
-  clean_type(TyRef, FixedVars, covariant).
+  % replace variable that occur only in covariant position by empty
+  % replace variable that occur only in contravariant position by any
+  % leave other variables in place
+  VariablePositions = collect_variable_positions(TyRef, _CurrentPosition = 1), % covariant == *1, contravariant *-1
+  clean_type(TyRef, FixedVars, VariablePositions, covariant).
 
-clean_type(TyRef, FixedVars, Pos) ->
-%%  io:format("(~p position) Cleaning generated fresh variables from ~p~n", [Pos, TyRef]),
-
-  #ty{
-    atom = Atoms,
-    interval = Ints,
-    tuple = Tuples,
-    function = Functions
-  } = ty_ref:load(TyRef),
-
-%%  io:format(user, "Cleaning type: {~n~p~n~p~n~p~n~p} ~n", [Atoms, Ints, Tuples, Functions]),
-  ty_ref:store(#ty{
-    atom = dnf_var_ty_atom:clean_type(Atoms, FixedVars, Pos),
-    interval = dnf_var_int:clean_type(Ints, FixedVars, Pos),
-    tuple = dnf_var_ty_tuple:clean_type(Tuples, FixedVars, Pos),
-    function = dnf_var_ty_function:clean_type(Functions, FixedVars, Pos)
-  })
-.
+clean_type(TyRef, FixedVars, VariablePositions, CurrentPosition) ->
+  ToClean = maps:filter(fun(K, V) -> not sets:is_element(K, FixedVars) andalso (V == [1] orelse V == [-1]) end, VariablePositions),
+  SubstituteMap = maps:map(fun(_K, [1]) -> ty_rec:empty(); (_K, [-1]) -> ty_rec:any() end, ToClean),
+%%  io:format(user, "Maps~n~p~n", [SubstituteMap]),
+%%  io:format(user, "Ty~n~p~n", [ty_ref:load(TyRef)]),
+%%  io:format(user, "All~n~p~n", [ty_rec:all_variables(TyRef)]),
+  ty_rec:substitute(TyRef, SubstituteMap).
+%%  TyRef
+%%.
 
 all_variables(TyRef) ->
   #ty{
@@ -267,4 +262,23 @@ all_variables(TyRef) ->
   ++ dnf_var_ty_tuple:all_variables(Tuples)
   ++ dnf_var_ty_function:all_variables(Functions)).
 
+
+collect_variable_positions(TyRef, CurrentPosition) ->
+  #ty{
+    atom = Atoms,
+    interval = Ints,
+    tuple = Tuples,
+    function = Functions
+  } = ty_ref:load(TyRef),
+
+  % TODO CONTINUE HERE VERIFY AND EXPORT ALL CONTINUE DNF TUPLE & FUNCTION
+  M1 = dnf_var_ty_atom:collect_variable_positions(Atoms, CurrentPosition),
+  M2 = dnf_var_int:collect_variable_positions(Ints, CurrentPosition),
+  M3 = dnf_var_ty_tuple:collect_variable_positions(Tuples, CurrentPosition),
+  M4 = dnf_var_ty_function:collect_variable_positions(Functions, CurrentPosition),
+
+  merge_maps([M1, M2, M3, M4]).
+
+merge_maps(Maps) ->
+  lists:foldl(fun(Item, Map) -> maps:merge_with(fun (_, V1, V2) -> lists:usort(V1 ++ V2) end, Item, Map) end, #{}, Maps).
 

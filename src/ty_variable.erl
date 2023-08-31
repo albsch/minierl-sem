@@ -8,7 +8,7 @@
 -export([equal/2, compare/2]).
 
 -behavior(var).
--export([new/1, smallest/3, normalize/6]).
+-export([new/1, smallest/3, normalize/6, is_position/3]).
 
 -record(var, {id, name}).
 -type var() :: #var{id :: integer(), name :: string()}.
@@ -70,6 +70,9 @@ normalize(Ty, PVar, NVar, Fixed, VarToTy, Mx) ->
 %%      io:format(user, "Normalize all fixed variables done! ~p~n", [Ty]),
       ty_rec:normalize(Ty, Fixed, Mx)
   end.
+
+is_position(Var, VarPos, Current) ->
+  error({Var, VarPos, Current}).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

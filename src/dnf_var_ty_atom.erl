@@ -10,7 +10,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
 
--export([ty_var/1, ty_atom/1, clean_type/3, all_variables/1]).
+-export([ty_var/1, ty_atom/1, collect_variable_positions/2, all_variables/1]).
 
 -type ty_atom() :: term().
 -type ty_variable() :: term(). % variable:type()
@@ -95,32 +95,17 @@ substitute({node, Variable, PositiveEdge, NegativeEdge}, Map, P, N) ->
   union(LBdd, RBdd).
 
 
-clean_type(0, _, _) -> 0;
-clean_type({terminal, Atom}, _Fixed, _Position) ->
-  % done
-  {terminal, Atom};
-clean_type({node, Variable, PositiveEdge, NegativeEdge}, FixedVariables, Position) ->
-
-  Left = clean_type(PositiveEdge, FixedVariables, Position),
-  Right = clean_type(NegativeEdge, FixedVariables, Position),
-
-  % if variable not in fixed => clean
-  case sets:is_element(Variable, FixedVariables) of
-    true ->
-      VarBdd = dnf_var_ty_atom:ty_var(Variable),
-      union(intersect(VarBdd, Left), intersect(negate(VarBdd), Right));
-    _ -> % if not fixed -> must be tally (otherwise would be normalized and substituted)
-%%      % TODO remove sanity check
-%%      {_, _, "tally_fresh"} = Variable,
-      Ty = for_position(Position),
-      union(intersect(Ty, Left), intersect(negate(Ty), Right))
-  end.
-
-for_position(covariant) -> empty();
-for_position(contravariant) -> any().
-
-
 all_variables(0) -> [];
 all_variables({terminal, _}) -> [];
 all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
 [Variable] ++ all_variables(PositiveEdge) ++ all_variables(NegativeEdge).
+
+collect_variable_positions(0, _Current) -> #{};
+collect_variable_positions({terminal, _Atom}, _Current) -> #{};
+collect_variable_positions({node, Variable, PositiveEdge, NegativeEdge}, Current) ->
+
+  Left = collect_variable_positions(PositiveEdge, Current),
+  Right = collect_variable_positions(NegativeEdge, Current),
+  ThisVariable = #{Variable => [Current]},
+
+  ty_rec:merge_maps([Left, Right, ThisVariable]).

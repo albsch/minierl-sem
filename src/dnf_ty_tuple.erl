@@ -10,7 +10,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/2]).
 
--export([tuple/1, clean_type/3]).
+-export([tuple/1, all_variables/1, collect_variable_positions/2]).
 
 -type dnf_tuple() :: term().
 -type ty_tuple() :: dnf_tuple(). % ty_tuple:type()
@@ -136,23 +136,27 @@ substitute({node, TyTuple, L_BDD, R_BDD}, Map) ->
     intersect(negate(tuple(NewTyTuple)), R_BDD)
     ).
 
-clean_type(0, _Fixed, _Position) -> 0;
-clean_type({terminal, 1}, _, _) ->
-  {terminal, 1};
-clean_type({node, TyTuple, L_BDD, R_BDD}, Fixed, Position) ->
-  S1 = ty_tuple:pi1(TyTuple),
-  S2 = ty_tuple:pi2(TyTuple),
+all_variables(0) -> [];
+all_variables({terminal, _}) -> [];
+all_variables({node, Tuple, PositiveEdge, NegativeEdge}) ->
+  ty_rec:all_variables(ty_tuple:pi1(Tuple))
+  ++ ty_rec:all_variables(ty_tuple:pi2(Tuple))
+    ++ all_variables(PositiveEdge)
+    ++ all_variables(NegativeEdge).
 
-  NewS1 = ty_rec:clean_type(S1, Fixed, Position),
-  NewS2 = ty_rec:clean_type(S2, Fixed, Position),
+collect_variable_positions(0,_Current) -> #{};
+collect_variable_positions({terminal, _}, _Current) -> #{};
+collect_variable_positions({node, Tuple, PositiveEdge, NegativeEdge}, Current) ->
+  T1 = ty_tuple:pi1(Tuple),
+  T2 = ty_tuple:pi2(Tuple),
 
-  NewTyTuple = ty_tuple:tuple(NewS1, NewS2),
+  VT1 = ty_rec:collect_variable_positions(T1, Current),
+  VT2 = ty_rec:collect_variable_positions(T2, Current),
 
-  union(
-    intersect(tuple(NewTyTuple), L_BDD),
-    intersect(negate(tuple(NewTyTuple)), R_BDD)
-  ).
+  Left = collect_variable_positions(PositiveEdge, Current),
+  Right = collect_variable_positions(NegativeEdge, Current),
 
+  ty_rec:merge_maps([Left, Right, VT1, VT2]).
 
 
 

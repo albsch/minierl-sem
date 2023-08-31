@@ -31,6 +31,8 @@
 
 
 buggy_old_tally_test() ->
+  % fix order for variables
+  lists:foreach(fun(Atom) -> norm(v(Atom)) end, ['0','1','2','3','4','5','6']),
   %%C1: ($1 -> $2) <= $0
   %%C2: $4 <= $2
   %%C3: 42 <= $4
@@ -75,17 +77,17 @@ buggy_old_tally_test() ->
 %%  io:format(user, "Result:~n~p~n", [Res]),
   [Sub1, Sub2] = Res,
   io:format(user, "Sub1:~n~p~n", [lists:map(fun({Var, Ty}) -> {Var, ty_ref:load(Ty)} end, Sub1)]),
-  io:format(user, "Sub2:~n~p~n", [lists:map(fun({Var, Ty}) -> {Var, ty_ref:load(Ty)} end, Sub2)]),
 
   MSub1 = maps:from_list(Sub1),
-  MSub2 = maps:from_list(Sub2),
   {S, T} = C1,
   ModS = ty_rec:substitute(S, MSub1),
   ModT = ty_rec:substitute(T, MSub1),
-  ModS2 = ty_rec:substitute(S, MSub2),
-  ModT2 = ty_rec:substitute(T, MSub2),
   io:format(user, "Res:~p~n", [ty_rec:is_subtype(ModS, ModT)]),
-  io:format(user, "Res:~p~n", [ty_rec:is_subtype(ModS2, ModT2)]),
+
+%%  MSub2 = maps:from_list(Sub2),
+%%  ModS2 = ty_rec:substitute(S, MSub2),
+%%  ModT2 = ty_rec:substitute(T, MSub2),
+%%  io:format(user, "Res:~p~n", [ty_rec:is_subtype(ModS2, ModT2)]),
 
 
   ok.

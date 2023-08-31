@@ -16,7 +16,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/2]).
 
--export([function/1, clean_type/3]).
+-export([function/1, collect_variable_positions/2, all_variables/1]).
 
 -type ty_ref() :: {ty_ref, integer()}.
 -type dnf_function() :: term().
@@ -163,27 +163,27 @@ substitute({node, TyFunction, L_BDD, R_BDD}, Map) ->
   ).
 
 
+all_variables(0) -> [];
+all_variables({terminal, _}) -> [];
+all_variables({node, Function, PositiveEdge, NegativeEdge}) ->
+  ty_rec:all_variables(ty_function:domain(Function))
+    ++ ty_rec:all_variables(ty_function:codomain(Function))
+    ++ all_variables(PositiveEdge)
+    ++ all_variables(NegativeEdge).
 
-clean_type(0, _Fixed, _Position) -> 0;
-clean_type({terminal, 1}, _, _) ->
-  {terminal, 1};
-clean_type({node, TyFunction, L_BDD, R_BDD}, Fixed, Position) ->
-  S1 = ty_function:domain(TyFunction),
-  S2 = ty_function:codomain(TyFunction),
+collect_variable_positions(0, _Current) -> #{};
+collect_variable_positions({terminal, _}, _Current) -> #{};
+collect_variable_positions({node, Function, PositiveEdge, NegativeEdge}, Current) ->
+  T1 = ty_function:domain(Function),
+  T2 = ty_function:codomain(Function),
 
-  NewS1 = ty_rec:clean_type(S1, Fixed, flip(Position)), % contravariant in domain type
-  NewS2 = ty_rec:clean_type(S2, Fixed, Position),
+  VT1 = ty_rec:collect_variable_positions(T1, Current * -1), % contravariant flip
+  VT2 = ty_rec:collect_variable_positions(T2, Current),
 
-  NewTyFunction = ty_function:function(NewS1, NewS2),
+  Left = collect_variable_positions(PositiveEdge, Current),
+  Right = collect_variable_positions(NegativeEdge, Current),
 
-  union(
-    intersect(function(NewTyFunction), L_BDD),
-    intersect(negate(function(NewTyFunction)), R_BDD)
-  ).
-
-flip(covariant) -> contravariant;
-flip(contravariant) -> covariant.
-
+  ty_rec:merge_maps([Left, Right, VT1, VT2]).
 
 
 -ifdef(TEST).
