@@ -54,27 +54,6 @@ buggy_old_tally_test() ->
 
   Res = tally:tally([C1, C2, C3, C4, C5, C6, C7, C8, C9]),
 
-
-
-  %% Sol 1
-  %% $0 => fun((none()) -> 42),
-  %% $1 => none(),
-  %% $2 => 42,
-  %% $3 => none(),
-  %% $4 => 42,
-  %% $5 => none(),
-  %% $6 => none()}
-
-  %% Sol 2
-  %% $0 => fun((none()) -> 42),
-  %% $1 => none(),
-  %% $2 => 42,
-  %% $3 => none(),
-  %% $4 => 42,
-  %% $5 => none(),
-  %% $6 => false | true}
-
-%%  io:format(user, "Result:~n~p~n", [Res]),
   [Sub1, Sub2] = Res,
   io:format(user, "Sub1:~n~p~n", [lists:map(fun({Var, Ty}) -> {Var, ty_ref:load(Ty)} end, Sub1)]),
 
@@ -88,6 +67,4 @@ buggy_old_tally_test() ->
 %%  ModS2 = ty_rec:substitute(S, MSub2),
 %%  ModT2 = ty_rec:substitute(T, MSub2),
 %%  io:format(user, "Res:~p~n", [ty_rec:is_subtype(ModS2, ModT2)]),
-
-
   ok.

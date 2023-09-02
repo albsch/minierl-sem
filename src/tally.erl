@@ -52,16 +52,16 @@ tally(Constraints) ->
 solve(SaturatedSetOfConstraintSets, FixedVariables) ->
   S = ([ solve_single(C, [], FixedVariables) || C <- SaturatedSetOfConstraintSets]),
 
-  RawSubstitutions = [unify(E) || E <- S],
+  RawSubstitutions = [unify(E) || E <- S].
 
-  % replace covariant -> Empty and contravariant -> Any
-
-  % unify produces very ugly types
-  % clean up a bit
-  CleanSubstitution = fun(Substitution, CFix) ->
-    lists:map(fun({Var, Ty}) -> {Var, ty_rec:clean_type(Ty, CFix)} end, Substitution)
-                      end,
-  lists:map(fun(E) -> CleanSubstitution(E, FixedVariables) end, RawSubstitutions).
+%%  % replace covariant -> Empty and contravariant -> Any
+%%
+%%  % unify produces very ugly types
+%%  % clean up a bit
+%%  CleanSubstitution = fun(Substitution, CFix) ->
+%%    lists:map(fun({Var, Ty}) -> {Var, ty_rec:clean_type(Ty, CFix)} end, Substitution)
+%%                      end,
+%%  lists:map(fun(E) -> CleanSubstitution(E, FixedVariables) end, RawSubstitutions).
 
 solve_single([], Equations, _) -> Equations;
 solve_single([{SmallestVar, Left, Right} | Cons], Equations, Fix) ->
