@@ -21,10 +21,7 @@ Roadmap
 -----
 
 
-V 1 Basic
-===========
-
-* [x] v1 basic architecture
+* [x] V1 basic architecture
   * AST test spec defined
   * arrows, 2-tuples, intervals, atoms
   * generic bdd
@@ -32,12 +29,12 @@ V 1 Basic
   * subtyping
   * recursive types via type references
 
-* [ ] V2
+* [x] V2
   * tallying
 
 * [ ] V3
   * lazy BDDs
-  * hash-consing of ty_rec operations
+  * hash-consing of `ty_rec` operations
   * hash-consing of BDD
   * hash-consing of BDD operations
 

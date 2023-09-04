@@ -1,5 +1,5 @@
 -module(ty_ref).
--vsn({1,3,3}).
+-vsn({2,0,0}).
 
 -export([any/0, store/1, load/1, new_ty_ref/0, define_ty_ref/2, is_empty_cached/1, store_is_empty_cached/2, store_recursive_variable/2, check_recursive_variable/1]).
 -export([memoize/1, is_empty_memoized/1, reset/0, is_normalized_memoized/3]).
@@ -10,7 +10,6 @@
 -define(TY_UNIQUE_TABLE, ty_unique). % ty -> id
 
 -define(EMPTY_MEMO, memoize_ty_ets).                            % ty_ref -> true
--define(EMPTY_MEMO_NORMALIZE, memoize_normalize_ty_ets).        % ty_ref -> true
 
 -define(EMPTY_CACHE, is_empty_memoize_ets). % ty_rec -> true/false
 
@@ -20,7 +19,7 @@
 -define(RECURSIVE_TABLE, remember_recursive_variables_ets).
 
 all_tables() ->
-  [?TY_UNIQUE_TABLE, ?TY_MEMORY, ?TY_UTIL, ?EMPTY_MEMO, ?EMPTY_CACHE, ?RECURSIVE_TABLE, ?EMPTY_MEMO_NORMALIZE].
+  [?TY_UNIQUE_TABLE, ?TY_MEMORY, ?TY_UTIL, ?EMPTY_MEMO, ?EMPTY_CACHE, ?RECURSIVE_TABLE].
 
 reset() ->
   ets:delete(?EMPTY_MEMO),
@@ -101,16 +100,26 @@ new_ty_ref() ->
   {ty_ref, next_ty_id()}.
 
 define_ty_ref({ty_ref, Id}, Ty) ->
-  io:format(user, "Store NEW: ~p :=~n~p~n", [Id, Ty]),
-%%  % check first if type is not already
+%%  io:format(user, "Store NEW: ~p :=~n~p~n", [Id, Ty]),
 
-  Object = ets:lookup(?TY_UNIQUE_TABLE, Ty),
-  case Object of
-    [] -> ok;
-    _ ->
-%%      io:format(user, "Defining a new type even though unique table has the type already!~n~p~n", [Ty]),
-      ok
-  end,
+  % TODO
+  % when defining new (recursive) types manually,
+  % the type to be built is already stored in the unique table
+  % before finishing the manual definition
+  % example: define_any stores the proper any type at the last ty_rec:union operation
+  % after the union, that same type is stored again in the any reference
+  % while the unique table still has one unique type to reference mapping,
+  % the memory table gets polluted with duplicate types with different references
+  % this became apparent when, in the last phase of tally,
+  % one always defines the new recursive type without checking first if this is necessary
+  % this creates a lot of {ty, 0, 0, 0, 0} (empty) types with (newly defined) different type references!
+%%  Object = ets:lookup(?TY_UNIQUE_TABLE, Ty),
+%%  case Object of
+%%    [] -> ok;
+%%    _ ->
+%%      % io:format(user, "Defining a new type even though unique table has the type already!~n~p~n", [Ty]),
+%%      ok
+%%  end,
 
   ets:insert(?TY_UNIQUE_TABLE, {Ty, Id}),
   ets:insert(?TY_MEMORY, {Id, Ty}),
@@ -129,7 +138,7 @@ store(Ty) ->
   case Object of
     [] ->
       Id = ets:update_counter(?TY_UTIL, ty_number, {2, 1}),
-      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
+%%      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
       ets:insert(?TY_UNIQUE_TABLE, {Ty, Id}),
       ets:insert(?TY_MEMORY, {Id, Ty}),
       {ty_ref, Id};
@@ -141,10 +150,6 @@ store(Ty) ->
 memoize({ty_ref, Id}) ->
   ets:insert(?EMPTY_MEMO, {Id, true}),
   ok.
-
-%%memoize_normalize(Id, _Fixed, M) ->
-%%  ets:insert(?EMPTY_MEMO_NORMALIZE, {{Id, Fixed}, true}),
-%%  ok.
 
 is_empty_memoized({ty_ref, Id}) ->
   Object = ets:lookup(?EMPTY_MEMO, Id),

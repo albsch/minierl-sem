@@ -1,12 +1,10 @@
 -module(tally).
-
+-vsn({2,0,0}).
 
 -export([
   tally/1,
   tally/2
 ]).
-
-% C = {(α → Bool, β → β) , (Int∨Bool → Int , α → β)}
 
 tally(Constraints, FixedVars) ->
   % TODO heuristic here and benchmark
@@ -19,10 +17,9 @@ tally(Constraints, FixedVars) ->
       fun() -> A end)
               end, [[]], Constraints),
 
-  % TODO can be moved inside the normalize phase, benchmark difference
   Saturated = lists:foldl(fun(ConstraintSet, A) ->
     constraint_set:join(
-      fun() -> constraint_set:merge(ConstraintSet, FixedVars, sets:new()) end,
+      fun() -> constraint_set:saturate(ConstraintSet, FixedVars, sets:new()) end,
       fun() -> A end)
                            end, [], Normalized),
 
@@ -33,35 +30,13 @@ tally(Constraints, FixedVars) ->
     _ -> solve(Saturated, FixedVars)
   end.
 
-
-%%  Min = minimize_solutions(S),
-%%  X = case Min of
-%%    {fail, _X} ->
-%%      {error, []};
-%%    _ ->
-%%      % transform to subst:t()
-%%      [maps:from_list([{VarName, Ty} || {{var, VarName}, Ty} <- Subst]) || Subst <- S]
-%%  end,
-%%
-%%  X.
-
 %%-spec tally(constraint:simple_constraints()) -> [substitution:t()] | {error, [{error, string()}]}.
 tally(Constraints) ->
   tally(Constraints, sets:new()).
 
 solve(SaturatedSetOfConstraintSets, FixedVariables) ->
   S = ([ solve_single(C, [], FixedVariables) || C <- SaturatedSetOfConstraintSets]),
-
-  RawSubstitutions = [unify(E) || E <- S].
-
-%%  % replace covariant -> Empty and contravariant -> Any
-%%
-%%  % unify produces very ugly types
-%%  % clean up a bit
-%%  CleanSubstitution = fun(Substitution, CFix) ->
-%%    lists:map(fun({Var, Ty}) -> {Var, ty_rec:clean_type(Ty, CFix)} end, Substitution)
-%%                      end,
-%%  lists:map(fun(E) -> CleanSubstitution(E, FixedVariables) end, RawSubstitutions).
+  [unify(E) || E <- S].
 
 solve_single([], Equations, _) -> Equations;
 solve_single([{SmallestVar, Left, Right} | Cons], Equations, Fix) ->
@@ -83,7 +58,8 @@ unify(EquationList) ->
     0 ->
       TA;
     _ ->
-      error(todo),
+      % TODO this should work, but not tested yet. Needs a test case
+      error({todo, implement_recursive_unification}),
       % create new recursive type μX
       MuX = ty_ref:new_ty_ref(),
 
@@ -93,7 +69,6 @@ unify(EquationList) ->
       Inner = ty_rec:substitute(TA, Mapping),
       ty_ref:define_ty_ref(MuX, ty_ref:load(Inner)),
       MuX
-
   end,
 
   NewMap = #{Var => NewTA},
@@ -103,8 +78,7 @@ unify(EquationList) ->
     (X = {eq, XA, TAA}) <- EquationList, X /= Eq
   ],
 
-  % TODO remove assert
-  true = length(EquationList) - 1 == length(E_),
+  % true = length(EquationList) - 1 == length(E_),
 
   Sigma = unify(E_),
   NewTASigma = apply_substitution(NewTA, Sigma),
@@ -112,32 +86,33 @@ unify(EquationList) ->
   [{Var, NewTASigma}] ++ Sigma.
 
 apply_substitution(Ty, Substitutions) ->
-%%  io:format(user, "Applying: ~p with ~p~n", [Ty, Substitutions]),
+  % io:format(user, "Applying: ~p with ~p~n", [Ty, Substitutions]),
   SubstFun = fun({Var, To}, Tyy) ->
     Mapping = #{Var => To},
     ty_rec:substitute(Tyy, Mapping)
     end,
   lists:foldl(SubstFun, Ty, Substitutions).
 
-%%minimize_solutions(X = {fail, _}, _) -> X;
-%%minimize_solutions(M, Sym) ->
-%%  R = lists:filter(fun(Sigma) -> not can_be_removed(Sigma, M, Sym) end, M),
+% TODO implement & benchmark the minimization
+%%minimize_solutions(X = {fail, _}) -> X;
+%%minimize_solutions(M) ->
+%%  R = lists:filter(fun(Sigma) -> not can_be_removed(Sigma, M) end, M),
 %%
 %%  case R of
 %%    M -> M;
 %%    _ ->
-%%      ?LOG_DEBUG("Successfully reduced tally solution size! ~p -> ~p", length(M), length(R)),
+%%      % ?LOG_DEBUG("Successfully reduced tally solution size! ~p -> ~p", length(M), length(R)),
 %%      R
 %%  end.
 %%
-%%can_be_removed(Sigma, AllSubs, Sym) ->
+%%can_be_removed(Sigma, AllSubs) ->
 %%  % does Sigma' exist such that
 %%  lists:any(fun(SigmaPrime) ->
 %%    % dom(Sigma') <: dom(Sigma)
 %%    domain(SigmaPrime, Sigma)
 %%    andalso
 %%    %for all alpha \in dom(sigma'): sigma'(alpha) ~ sigma(alpha)
-%%    sub_domain_equivalent(SigmaPrime, Sigma, Sym)
+%%    sub_domain_equivalent(SigmaPrime, Sigma)
 %%            end, lists:delete(Sigma, AllSubs)).
 %%
 %%
@@ -146,10 +121,10 @@ apply_substitution(Ty, Substitutions) ->
 %%  S2 = [Var || {Var, _} <- Sigma2],
 %%  gb_sets:is_subset(gb_sets:from_list(S1), gb_sets:from_list(S2)).
 %%
-%%sub_domain_equivalent(S1, S2, Sym) ->
+%%sub_domain_equivalent(S1, S2) ->
 %%  SAll = [Var || {Var, _} <- S1],
 %%  lists:all(fun(Var) ->
 %%    [Ty] = [T || {V, T} <- S1, V == Var],
 %%    [Ty2] = [T || {V, T} <- S2, V == Var],
-%%    subty:is_equivalent(Sym, Ty, Ty2)
+%%    ty_rec:is_equivalent(Ty, Ty2)
 %%            end, SAll).

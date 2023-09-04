@@ -1,5 +1,5 @@
 -module(dnf_var_ty_atom).
--vsn({1,2,0}).
+-vsn({2,0,0}).
 
 -define(P, {ty_atom, ty_variable}).
 
@@ -10,7 +10,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
 
--export([ty_var/1, ty_atom/1, collect_variable_positions/2, all_variables/1]).
+-export([ty_var/1, ty_atom/1, all_variables/1]).
 
 -type ty_atom() :: term().
 -type ty_variable() :: term(). % variable:type()
@@ -99,13 +99,3 @@ all_variables(0) -> [];
 all_variables({terminal, _}) -> [];
 all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
 [Variable] ++ all_variables(PositiveEdge) ++ all_variables(NegativeEdge).
-
-collect_variable_positions(0, _Current) -> #{};
-collect_variable_positions({terminal, _Atom}, _Current) -> #{};
-collect_variable_positions({node, Variable, PositiveEdge, NegativeEdge}, Current) ->
-
-  Left = collect_variable_positions(PositiveEdge, Current),
-  Right = collect_variable_positions(NegativeEdge, Current),
-  ThisVariable = #{Variable => [Current]},
-
-  ty_rec:merge_maps([Left, Right, ThisVariable]).

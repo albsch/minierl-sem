@@ -1,5 +1,5 @@
 -module(ty_tuple).
--vsn({1,2,0}).
+-vsn({2,0,0}).
 
 %% 2-tuple representation
 
@@ -22,9 +22,7 @@ pi2({ty_tuple, _, Ref}) -> Ref.
 
 has_ref({ty_tuple, Ref, _}, Ref) -> true;
 has_ref({ty_tuple, _, Ref}, Ref) -> true;
-has_ref({ty_tuple, _, _}, _Ref) ->
-    io:format(user, "FALSE~n", []),
-    false.
+has_ref({ty_tuple, _, _}, _Ref) -> false.
 
 
 -ifdef(TEST).

@@ -1,5 +1,5 @@
 -module(dnf_var_int).
--vsn({1,1,0}).
+-vsn({2,0,0}).
 
 -define(P, {ty_interval, ty_variable}).
 
@@ -10,7 +10,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
 
--export([var/1, int/1,  all_variables/1, collect_variable_positions/2]).
+-export([var/1, int/1,  all_variables/1]).
 
 -type interval() :: term(). % interval:type()
 -type variable() :: term(). % variable:type()
@@ -100,15 +100,7 @@ all_variables({terminal, _}) -> [];
 all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
   [Variable] ++ all_variables(PositiveEdge) ++ all_variables(NegativeEdge).
 
-collect_variable_positions(0, _Current) -> #{};
-collect_variable_positions({terminal, _}, _Current) -> #{};
-collect_variable_positions({node, Variable, PositiveEdge, NegativeEdge}, Current) ->
 
-  Left = collect_variable_positions(PositiveEdge, Current),
-  Right = collect_variable_positions(NegativeEdge, Current),
-  ThisVariable = #{Variable => [Current]},
-
-  ty_rec:merge_maps([Left, Right, ThisVariable]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

@@ -1,5 +1,5 @@
 -module(dnf_var_ty_function).
--vsn({1,3,0}).
+-vsn({2,0,0}).
 
 -define(P, {dnf_ty_function, ty_variable}).
 
@@ -10,7 +10,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/3]).
 
--export([var/1, function/1, all_variables/1, collect_variable_positions/2, has_ref/2]).
+-export([var/1, function/1, all_variables/1, has_ref/2]).
 
 -type dnf_function() :: term().
 -type ty_function() :: dnf_function(). % ty_function:type()
@@ -58,8 +58,8 @@ normalize(0, _, _, _, _) -> [[]]; % satisfiable
 normalize({terminal, Function}, PVar, NVar, Fixed, M) ->
   case ty_ref:is_normalized_memoized(Function, Fixed, M) of
     true ->
-      io:format(user, "Memoized:~n~p", [Function]),
-      error(todo); %[[]];
+      % TODO test case
+      error({todo, extract_test_case, memoize_function}); %[[]];
     miss ->
       % memoize only non-variable component t0
       dnf_ty_function:normalize(Function, PVar, NVar, Fixed, sets:union(M, sets:from_list([Function])))
@@ -110,13 +110,3 @@ all_variables(0) -> [];
 all_variables({terminal, Function}) -> dnf_ty_function:all_variables(Function);
 all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
 [Variable] ++ all_variables(PositiveEdge) ++ all_variables(NegativeEdge).
-
-collect_variable_positions(0, _Current) -> #{};
-collect_variable_positions({terminal, Function}, Current) -> dnf_ty_function:collect_variable_positions(Function, Current);
-collect_variable_positions({node, Variable, PositiveEdge, NegativeEdge}, Current) ->
-
-  Left = collect_variable_positions(PositiveEdge, Current),
-  Right = collect_variable_positions(NegativeEdge, Current),
-  ThisVariable = #{Variable => [Current]},
-
-  ty_rec:merge_maps([Left, Right, ThisVariable]).

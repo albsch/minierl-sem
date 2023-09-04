@@ -41,15 +41,16 @@ new(Name) ->
 
 % assumption: PVars U NVars is not empty
 smallest(PositiveVariables, NegativeVariables, FixedVariables) ->
-  true = (length(PositiveVariables) + length(NegativeVariables)) > 0, % TODO comment out sanity check
-  % fixed variables are higher order than all non-fixed ones, will be picked last
-  PositiveVariablesp = [{pos, V} || V <- PositiveVariables, not sets:is_element(V, FixedVariables)],
-  NegativeVariablesn = [{neg, V} || V <- NegativeVariables, not sets:is_element(V, FixedVariables)],
+  % true = (length(PositiveVariables) + length(NegativeVariables)) > 0,
 
-  Rest = [{delta, V} || V <- PositiveVariables ++ NegativeVariables, sets:is_element(V, FixedVariables)],
+  % fixed variables are higher order than all non-fixed ones, will be picked last
+  PositiveVariablesTagged = [{pos, V} || V <- PositiveVariables, not sets:is_element(V, FixedVariables)],
+  NegativeVariablesTagged = [{neg, V} || V <- NegativeVariables, not sets:is_element(V, FixedVariables)],
+
+  RestTagged = [{delta, V} || V <- PositiveVariables ++ NegativeVariables, sets:is_element(V, FixedVariables)],
 
   Sort = fun({_, V}, {_, V2}) -> leq(V, V2) end,
-  [X | Z] = lists:sort(Sort, PositiveVariablesp++NegativeVariablesn) ++ lists:sort(Sort, Rest),
+  [X | Z] = lists:sort(Sort, PositiveVariablesTagged++NegativeVariablesTagged) ++ lists:sort(Sort, RestTagged),
 
   {X, Z}.
 

@@ -1,5 +1,5 @@
 -module(dnf_ty_function).
--vsn({1,3,1}).
+-vsn({2,0,0}).
 
 -ifdef(TEST).
 -export([normalize_no_vars/6]).
@@ -16,7 +16,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/3]).
 
--export([function/1, collect_variable_positions/2, all_variables/1, has_ref/2]).
+-export([function/1, all_variables/1, has_ref/2]).
 
 -type ty_ref() :: {ty_ref, integer()}.
 -type dnf_function() :: term().
@@ -179,19 +179,6 @@ all_variables({node, Function, PositiveEdge, NegativeEdge}) ->
     ++ all_variables(PositiveEdge)
     ++ all_variables(NegativeEdge).
 
-collect_variable_positions(0, _Current) -> #{};
-collect_variable_positions({terminal, _}, _Current) -> #{};
-collect_variable_positions({node, Function, PositiveEdge, NegativeEdge}, Current) ->
-  T1 = ty_function:domain(Function),
-  T2 = ty_function:codomain(Function),
-
-  VT1 = ty_rec:collect_variable_positions(T1, Current * -1), % contravariant flip
-  VT2 = ty_rec:collect_variable_positions(T2, Current),
-
-  Left = collect_variable_positions(PositiveEdge, Current),
-  Right = collect_variable_positions(NegativeEdge, Current),
-
-  ty_rec:merge_maps([Left, Right, VT1, VT2]).
 
 
 -ifdef(TEST).

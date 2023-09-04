@@ -12,11 +12,11 @@ example_merge_test() ->
 
   [C1, C2, C3, C4] = Result,
   % unchanged
-  [C1] = constraint_set:merge(C1, sets:new(), sets:new()),
+  [C1] = constraint_set:saturate(C1, sets:new(), sets:new()),
 
   % unsat
-  [] = constraint_set:merge(C2, sets:new(), sets:new()),
-  [] = constraint_set:merge(C3, sets:new(), sets:new()),
+  [] = constraint_set:saturate(C2, sets:new(), sets:new()),
+  [] = constraint_set:saturate(C3, sets:new(), sets:new()),
 
   % new
   % {
@@ -25,7 +25,7 @@ example_merge_test() ->
   % }
 
 %%  io:format(user, "Input:~n~p~n,", [C4]),
-  [[_MC1, _MC2]] = constraint_set:merge(C4, sets:new(), sets:new()),
+  [[_MC1, _MC2]] = constraint_set:saturate(C4, sets:new(), sets:new()),
 
 %%  {MV1, Z1, Z2} = MC1,
 %%  {MV2, Z3, Z4} = MC2,

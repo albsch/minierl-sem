@@ -1,21 +1,22 @@
 -module(constraint_set).
+-vsn({2,0,0}).
 
 %% API
 -export([set_of_constraint_sets/1, constraint_set/1, constraint/3, constraint/1, is_smaller/2]).
 -export([merge_and_meet/2, merge_and_join/2, has_smaller_constraint_w/2, has_smaller_constraint/2]).
 -export([meet/2, join/2, minimize/1]).
--export([merge/3]).
+-export([saturate/3]).
 
 % step 2. from merge phase
 % step 1. happens by construction automatically
-merge(C, FixedVariables, Memo) ->
+saturate(C, FixedVariables, Memo) ->
   case pick_bounds_in_c(C, Memo) of
     {_Var, S, T} ->
       SnT = ty_rec:intersect(S, ty_rec:negate(T)),
       Normed = fun() -> ty_rec:normalize(SnT, FixedVariables, sets:new()) end,
       NewS = meet(fun() -> [C] end, Normed),
       lists:foldl(fun(NewC, AllS) ->
-        NewMerged = fun() -> merge(NewC, FixedVariables, sets:union(Memo, sets:from_list([SnT]))) end,
+        NewMerged = fun() -> saturate(NewC, FixedVariables, sets:union(Memo, sets:from_list([SnT]))) end,
         join(fun() -> AllS end, NewMerged)
                   end, [], NewS);
     _ -> [C]
@@ -33,15 +34,6 @@ pick_bounds_in_c([{Var, S, T} | Cs], Memo) ->
       end
   end
 .
-
-%%saturate_single([], All, _, _) -> [All];
-%%saturate_single([C = {Var, S, T} | Cs], All, Memo, FixedVariables) ->
-%%    true -> saturate_single(Cs, All ++ [C], Memo, FixedVariables);
-%%    _ ->
-%%      NewS = [C]
-%%
-%%  end.
-
 
 set_of_constraint_sets(S) -> S.
 constraint_set(Cs) when is_list(Cs) -> Cs.

@@ -1,7 +1,8 @@
 -module(dnf_ty_tuple).
--vsn({1,3,2}).
+-vsn({2,0,0}).
 
 -define(P, {bdd_bool, ty_tuple}).
+-define(F(Z), fun() -> Z end).
 
 -behavior(eq).
 -export([equal/2, compare/2]).
@@ -10,7 +11,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/3]).
 
--export([tuple/1, all_variables/1, collect_variable_positions/2, has_ref/2]).
+-export([tuple/1, all_variables/1, has_ref/2]).
 
 -type dnf_tuple() :: term().
 -type ty_tuple() :: dnf_tuple(). % ty_tuple:type()
@@ -83,7 +84,6 @@ normalize(DnfTyTuple, PVar, NVar, Fixed, M) ->
   % ntlv rule
   ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:tuple(dnf_var_ty_tuple:var(Var)) end, M).
 
-
 normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty
 normalize_no_vars({terminal, 1}, S1, S2, N, Fixed, M) ->
   phi_norm(S1, S2, N, Fixed, M);
@@ -91,32 +91,28 @@ normalize_no_vars({node, TyTuple, L_BDD, R_BDD}, BigS1, BigS2, Negated, Fixed, M
   S1 = ty_tuple:pi1(TyTuple),
   S2 = ty_tuple:pi2(TyTuple),
 
-  % TODO lazy
-  constraint_set:merge_and_meet(
-    normalize_no_vars(L_BDD, ty_rec:intersect(S1, BigS1), ty_rec:intersect(S2, BigS2), Negated, Fixed, M),
-    normalize_no_vars(R_BDD, BigS1, BigS2, [TyTuple | Negated], Fixed, M)
-  ).
+  X1 = ?F(normalize_no_vars(L_BDD, ty_rec:intersect(S1, BigS1), ty_rec:intersect(S2, BigS2), Negated, Fixed, M)),
+  X2 = ?F(normalize_no_vars(R_BDD, BigS1, BigS2, [TyTuple | Negated], Fixed, M)),
+  constraint_set:meet(X1, X2).
 
 phi_norm(S1, S2, [], Fixed, M) ->
-  % TODO lazy
-  T1 = ty_rec:normalize(S1, Fixed, M),
-  T2 = ty_rec:normalize(S2, Fixed, M),
-  constraint_set:merge_and_join(T1, T2);
+  T1 = ?F(ty_rec:normalize(S1, Fixed, M)),
+  T2 = ?F(ty_rec:normalize(S2, Fixed, M)),
+  constraint_set:join(T1, T2);
 phi_norm(S1, S2, [Ty | N], Fixed, M) ->
-  T1 = ty_rec:normalize(S1, Fixed, M),
-  T2 = ty_rec:normalize(S2, Fixed, M),
+  T1 = ?F(ty_rec:normalize(S1, Fixed, M)),
+  T2 = ?F(ty_rec:normalize(S2, Fixed, M)),
 
   T3 =
-    begin
+    ?F(begin
       TT1 = ty_tuple:pi1(Ty),
       TT2 = ty_tuple:pi2(Ty),
-      X1 = phi_norm(ty_rec:diff(S1, TT1), S2, N, Fixed, M),
-      X2 = phi_norm(S1, ty_rec:diff(S2, TT2), N, Fixed, M),
-      constraint_set:merge_and_meet(X1, X2)
-    end,
+      X1 = ?F(phi_norm(ty_rec:diff(S1, TT1), S2, N, Fixed, M)),
+      X2 = ?F(phi_norm(S1, ty_rec:diff(S2, TT2), N, Fixed, M)),
+      constraint_set:meet(X1, X2)
+    end),
 
-  % TODO lazy
-  constraint_set:merge_and_join(T1, constraint_set:merge_and_join(T2, T3)).
+  constraint_set:join(T1, ?F(constraint_set:join(T2, T3))).
 
 
 substitute(0, _, _) -> 0;
@@ -152,20 +148,6 @@ all_variables({node, Tuple, PositiveEdge, NegativeEdge}) ->
   ++ ty_rec:all_variables(ty_tuple:pi2(Tuple))
     ++ all_variables(PositiveEdge)
     ++ all_variables(NegativeEdge).
-
-collect_variable_positions(0,_Current) -> #{};
-collect_variable_positions({terminal, _}, _Current) -> #{};
-collect_variable_positions({node, Tuple, PositiveEdge, NegativeEdge}, Current) ->
-  T1 = ty_tuple:pi1(Tuple),
-  T2 = ty_tuple:pi2(Tuple),
-
-  VT1 = ty_rec:collect_variable_positions(T1, Current),
-  VT2 = ty_rec:collect_variable_positions(T2, Current),
-
-  Left = collect_variable_positions(PositiveEdge, Current),
-  Right = collect_variable_positions(NegativeEdge, Current),
-
-  ty_rec:merge_maps([Left, Right, VT1, VT2]).
 
 
 

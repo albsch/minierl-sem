@@ -21,24 +21,25 @@
 %%  C2 = {norm(t(r(), r())), norm(f(v(alpha), v(beta)))},
 %%  _Res = tally:tally([C1, C2]),
 %%  ok.
-%%
-%%issue_8_tally_test() ->
-%%  % fix order for variables
-%%  lists:foreach(fun(Atom) -> norm(v(Atom)) end, ['0','1','2','3','4','5','6']),
-%%  C1 = {norm(f(v('1'), v('2'))), norm(v('0'))},
-%%  C2 = {norm(v('4'))           , norm(v('2'))},
-%%  C3 = {norm(r(42))            , norm(v('4'))},
-%%  C4 = {norm(v('3'))           , norm(any())},
-%%  C5 = {norm(i(v('3'), r()))   , norm(v('4'))},
-%%  C6 = {norm(i(v('3'), r()))   , norm(v('5'))},
-%%  C7 = {norm(f(any(), b(bool))), norm(f(v('5'), v('6')))},
-%%  C8 = {norm(v('6'))           , norm(b(bool))},
-%%  C9 = {norm(v('1'))           , norm(v('3'))},
-%%
-%%  Res = tally:tally([C1, C2, C3, C4, C5, C6, C7, C8, C9]),
-%%
-%%  [_Sub1, _Sub2] = Res,
-%%  ok.
+
+issue_8_tally_test() ->
+  % fix order for variables
+  lists:foreach(fun(Atom) -> norm(v(Atom)) end, ['0','1','2','3','4','5','6']),
+  C1 = {norm(f(v('1'), v('2'))), norm(v('0'))},
+  C2 = {norm(v('4'))           , norm(v('2'))},
+  C3 = {norm(r(42))            , norm(v('4'))},
+  C4 = {norm(v('3'))           , norm(any())},
+  C5 = {norm(i(v('3'), r()))   , norm(v('4'))},
+  C6 = {norm(i(v('3'), r()))   , norm(v('5'))},
+  C7 = {norm(f(any(), b(bool))), norm(f(v('5'), v('6')))},
+  C8 = {norm(v('6'))           , norm(b(bool))},
+  C9 = {norm(v('1'))           , norm(v('3'))},
+
+  Res = tally:tally([C1, C2, C3, C4, C5, C6, C7, C8, C9]),
+
+  [_Sub1, _Sub2] = Res,
+
+  ok.
 
 issue_13_tally_test() ->
   A = b(a),
@@ -65,9 +66,9 @@ issue_13_tally_test() ->
   % fix order for variables
 %%  lists:foreach(fun(Atom) -> norm(v(Atom)) end, ['0','1','2','3','4','5','6']),
 
-  Res = tally:tally(norm_all([C1, C2, C3, C4, C5, C6, C7, C8, C9])),
+  _Res = tally:tally(norm_all([C1, C2, C3, C4, C5, C6, C7, C8, C9])),
 
-  io:format(user, "Res: ~n~p~n", [Res]),
+%%  io:format(user, "Res: ~n~p~n", [Res]),
 
   ok.
 

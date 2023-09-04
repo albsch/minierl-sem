@@ -1,5 +1,5 @@
 -module(ty_function).
--vsn({1,3,1}).
+-vsn({2,0,0}).
 
 %% domain -> co-domain function representation
 

@@ -1,4 +1,5 @@
 -module(set_of_constraint_sets).
+-vsn({2,0,0}).
 
 %% API
 -export([is_smaller/2, is_equivalent/3]).

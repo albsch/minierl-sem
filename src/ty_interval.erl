@@ -1,5 +1,5 @@
 -module(ty_interval).
--vsn({1,0,0}).
+-vsn({2,0,0}).
 
 %% Efficient interval representation
 

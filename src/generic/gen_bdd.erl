@@ -1,5 +1,5 @@
 -module(gen_bdd).
--vsn({1,2,0}).
+-vsn({2,0,0}).
 
 % A generic BDD parameterized over both the 'nodes and 'leafs: BDD<Element, Terminal>
 %
