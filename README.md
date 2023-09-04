@@ -23,7 +23,7 @@ Roadmap
 
 * [x] V1 basic architecture
   * AST test spec defined
-  * arrows, 2-tuples, intervals, atoms
+  * 1-functions, 2-tuples, intervals, atoms
   * generic bdd
   * hash-consing of types
   * subtyping
@@ -31,18 +31,15 @@ Roadmap
 
 * [x] V2
   * tallying
-
+   
 * [ ] V3
+  * types: n-tuples, n-functions
+  * 
+* [ ] V4
+  * types: named, base, lists, bitstrings, records, specials, maps, ...
+
+* [ ] V_opt1
   * lazy BDDs
   * hash-consing of `ty_rec` operations
   * hash-consing of BDD
   * hash-consing of BDD operations
-
-* [ ] V4 
-  * types: base
-  * 
-* [ ] V5 
-  * types: n-tuples, n-functions
-  * 
-* [ ] V6 
-  * types: lists, bitstrings, records, specials, ...
