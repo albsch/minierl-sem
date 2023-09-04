@@ -121,12 +121,15 @@ load({ty_ref, Id}) ->
   [{Id, Ty}] = ets:lookup(?TY_MEMORY, Id),
   Ty.
 
+%%store_rec(Ty, OldRef) ->
+
+
 store(Ty) ->
   Object = ets:lookup(?TY_UNIQUE_TABLE, Ty),
   case Object of
     [] ->
       Id = ets:update_counter(?TY_UTIL, ty_number, {2, 1}),
-%%      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
+      io:format(user, "Store: ~p :=~n~p~n", [Id, Ty]),
       ets:insert(?TY_UNIQUE_TABLE, {Ty, Id}),
       ets:insert(?TY_MEMORY, {Id, Ty}),
       {ty_ref, Id};

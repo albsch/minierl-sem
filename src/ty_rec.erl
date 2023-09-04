@@ -15,7 +15,7 @@
 
 -export([is_equivalent/2, is_subtype/2, normalize/3]).
 
--export([substitute/2, pi/2, clean_type/2, clean_type/4, all_variables/1, merge_maps/1, collect_variable_positions/2]).
+-export([substitute/2, substitute/3, pi/2, clean_type/2, clean_type/4, all_variables/1, merge_maps/1, collect_variable_positions/2]).
 
 -record(ty, {atom, interval, tuple, function}).
 
@@ -202,21 +202,45 @@ normalize(TyRef, Fixed, M) ->
       end
   end.
 
-% TODO recursive types & memo set
 substitute(TyRef, SubstituteMap) ->
-  #ty{
-    atom = Atoms,
-    interval = Ints,
-    tuple = Tuples,
-    function = Functions
-  } = ty_ref:load(TyRef),
-  ty_ref:store(#ty{
-    atom = dnf_var_ty_atom:substitute(Atoms, SubstituteMap),
-    interval = dnf_var_int:substitute(Ints, SubstituteMap),
-    tuple = dnf_var_ty_tuple:substitute(Tuples, SubstituteMap),
-    function = dnf_var_ty_function:substitute(Functions, SubstituteMap)
-    })
-  .
+  substitute(TyRef, SubstituteMap, sets:new()).
+
+substitute(TyRef, SubstituteMap, OldMemo) ->
+  case sets:is_element(TyRef, OldMemo) of
+    true ->
+      TyRef; %done
+    false ->
+      Memo = sets:union(OldMemo, sets:from_list([TyRef])),
+      Ty = #ty{
+        atom = Atoms,
+        interval = Ints,
+        tuple = Tuples,
+        function = Functions
+      } = ty_ref:load(TyRef),
+      io:format(user, "Substitute:~p~n", [Ty]),
+      io:format(user, "With:~p~n", [SubstituteMap]),
+      NewTy = #ty{
+        atom = dnf_var_ty_atom:substitute(Atoms, SubstituteMap),
+        interval = dnf_var_int:substitute(Ints, SubstituteMap),
+        tuple = dnf_var_ty_tuple:substitute(Tuples, SubstituteMap, Memo),
+        function = dnf_var_ty_function:substitute(Functions, SubstituteMap, Memo)
+      },
+
+      io:format(user, "Got (~p) :~p~n", [TyRef, NewTy]),
+      case has_ref(NewTy, TyRef) of
+        true ->
+          RecursiveNewRef = ty_ref:new_ty_ref(),
+          %ty_rec:replace_ref(NewTy, TyRef,),
+          error(todo_rec);
+
+        false -> ty_ref:store(NewTy)
+      end
+  end.
+
+has_ref(#ty{tuple = Tuple, function = Function}, TyRef) ->
+  dnf_var_ty_tuple:has_ref(Tuple, TyRef)
+ orelse
+    dnf_var_ty_function:has_ref(Function, TyRef).
 
 
 pi(atom, TyRef) ->
@@ -282,3 +306,33 @@ collect_variable_positions(TyRef, CurrentPosition) ->
 merge_maps(Maps) ->
   lists:foldl(fun(Item, Map) -> maps:merge_with(fun (_, V1, V2) -> lists:usort(V1 ++ V2) end, Item, Map) end, #{}, Maps).
 
+
+
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+usage_test() ->
+  Lists = ty_ref:new_ty_ref(),
+
+  % nil
+  Nil = ty_rec:atom(dnf_var_ty_atom:ty_atom(ty_atom:finite([nil]))),
+
+  % (alpha, Lists)
+  Alpha = ty_variable:new("alpha"),
+  AlphaTy = ty_rec:variable(Alpha),
+  Tuple = ty_rec:tuple(dnf_var_ty_tuple:tuple(dnf_ty_tuple:tuple(ty_tuple:tuple(AlphaTy, Lists)))),
+  Recursive = ty_rec:union(Nil, Tuple),
+
+
+  ty_ref:define_ty_ref(Lists, ty_ref:load(Recursive)),
+
+  SomeBasic = ty_rec:atom(dnf_var_ty_atom:ty_atom(ty_atom:finite([somebasic]))),
+  SubstMap = #{Alpha => SomeBasic},
+  Res = ty_rec:substitute(Lists, SubstMap),
+  io:format(user, "Res:~n~p~n", [Res]),
+
+
+  ok.
+
+-endif.

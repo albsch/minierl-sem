@@ -8,9 +8,9 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/2]).
+-export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/3]).
 
--export([tuple/1, all_variables/1, collect_variable_positions/2]).
+-export([tuple/1, all_variables/1, collect_variable_positions/2, has_ref/2]).
 
 -type dnf_tuple() :: term().
 -type ty_tuple() :: dnf_tuple(). % ty_tuple:type()
@@ -119,15 +119,15 @@ phi_norm(S1, S2, [Ty | N], Fixed, M) ->
   constraint_set:merge_and_join(T1, constraint_set:merge_and_join(T2, T3)).
 
 
-substitute(0, _) -> 0;
-substitute({terminal, 1}, _) ->
+substitute(0, _, _) -> 0;
+substitute({terminal, 1}, _, _) ->
   {terminal, 1};
-substitute({node, TyTuple, L_BDD, R_BDD}, Map) ->
+substitute({node, TyTuple, L_BDD, R_BDD}, Map, Memo) ->
   S1 = ty_tuple:pi1(TyTuple),
   S2 = ty_tuple:pi2(TyTuple),
 
-  NewS1 = ty_rec:substitute(S1, Map),
-  NewS2 = ty_rec:substitute(S2, Map),
+  NewS1 = ty_rec:substitute(S1, Map, Memo),
+  NewS2 = ty_rec:substitute(S2, Map, Memo),
 
   NewTyTuple = ty_tuple:tuple(NewS1, NewS2),
 
@@ -135,6 +135,15 @@ substitute({node, TyTuple, L_BDD, R_BDD}, Map) ->
     intersect(tuple(NewTyTuple), L_BDD),
     intersect(negate(tuple(NewTyTuple)), R_BDD)
     ).
+
+has_ref(0, _) -> false;
+has_ref({terminal, _}, _) -> false;
+has_ref({node, Tuple, PositiveEdge, NegativeEdge}, Ref) ->
+  ty_tuple:has_ref(Tuple, Ref)
+    orelse
+    has_ref(PositiveEdge, Ref)
+    orelse
+    has_ref(NegativeEdge, Ref).
 
 all_variables(0) -> [];
 all_variables({terminal, _}) -> [];

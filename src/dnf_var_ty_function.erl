@@ -8,9 +8,9 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
+-export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/3]).
 
--export([var/1, function/1, all_variables/1, collect_variable_positions/2]).
+-export([var/1, function/1, all_variables/1, collect_variable_positions/2, has_ref/2]).
 
 -type dnf_function() :: term().
 -type ty_function() :: dnf_function(). % ty_function:type()
@@ -71,10 +71,10 @@ normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar, Fixed, M) ->
   ).
 
 
-substitute(T, M) -> substitute(T, M, [], []).
+substitute(T, M, Memo) -> substitute(T, M, Memo, [], []).
 
-substitute(0, _, _, _) -> 0;
-substitute({terminal, Function}, Map, Pos, Neg) ->
+substitute(0, _, _, _, _) -> 0;
+substitute({terminal, Function}, Map, Memo, Pos, Neg) ->
   AllPos = lists:map(
     fun(Var) ->
       Substitution = maps:get(Var, Map, ty_rec:variable(Var)),
@@ -89,14 +89,22 @@ substitute({terminal, Function}, Map, Pos, Neg) ->
 
   lists:foldl(fun(Current, All) ->
     intersect(Current, All)
-              end, function(dnf_ty_function:substitute(Function, Map)), AllPos ++ AllNeg);
+              end, function(dnf_ty_function:substitute(Function, Map, Memo)), AllPos ++ AllNeg);
 
-substitute({node, Variable, PositiveEdge, NegativeEdge}, Map, P, N) ->
+substitute({node, Variable, PositiveEdge, NegativeEdge}, Map, Memo, P, N) ->
 
-  LBdd = substitute(PositiveEdge, Map, [Variable | P], N),
-  RBdd = substitute(NegativeEdge, Map, P, [Variable | N]),
+  LBdd = substitute(PositiveEdge, Map, Memo, [Variable | P], N),
+  RBdd = substitute(NegativeEdge, Map, Memo, P, [Variable | N]),
 
   union(LBdd, RBdd).
+
+has_ref(0, _) -> false;
+has_ref({terminal, Function}, Ref) ->
+  dnf_ty_function:has_ref(Function, Ref);
+has_ref({node, _Variable, PositiveEdge, NegativeEdge}, Ref) ->
+  has_ref(PositiveEdge, Ref) orelse has_ref(NegativeEdge, Ref).
+
+
 
 all_variables(0) -> [];
 all_variables({terminal, Function}) -> dnf_ty_function:all_variables(Function);

@@ -14,9 +14,9 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/2]).
+-export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/3]).
 
--export([function/1, collect_variable_positions/2, all_variables/1]).
+-export([function/1, collect_variable_positions/2, all_variables/1, has_ref/2]).
 
 -type ty_ref() :: {ty_ref, integer()}.
 -type dnf_function() :: term().
@@ -145,15 +145,15 @@ explore_function_norm(T1, T2, [Function | P], Fixed, M) ->
     ?F(constraint_set:join(NT2,
       ?F(constraint_set:meet(NS1, NS2))))).
 
-substitute(0, _) -> 0;
-substitute({terminal, 1}, _) ->
+substitute(0, _, _) -> 0;
+substitute({terminal, 1}, _, _) ->
   {terminal, 1};
-substitute({node, TyFunction, L_BDD, R_BDD}, Map) ->
+substitute({node, TyFunction, L_BDD, R_BDD}, Map, Memo) ->
   S1 = ty_function:domain(TyFunction),
   S2 = ty_function:codomain(TyFunction),
 
-  NewS1 = ty_rec:substitute(S1, Map),
-  NewS2 = ty_rec:substitute(S2, Map),
+  NewS1 = ty_rec:substitute(S1, Map, Memo),
+  NewS2 = ty_rec:substitute(S2, Map, Memo),
 
   NewTyFunction = ty_function:function(NewS1, NewS2),
 
@@ -162,6 +162,14 @@ substitute({node, TyFunction, L_BDD, R_BDD}, Map) ->
     intersect(negate(function(NewTyFunction)), R_BDD)
   ).
 
+has_ref(0, _) -> false;
+has_ref({terminal, _}, _) -> false;
+has_ref({node, Function, PositiveEdge, NegativeEdge}, Ref) ->
+  ty_function:has_ref(Function, Ref)
+  orelse
+  has_ref(PositiveEdge, Ref)
+    orelse
+    has_ref(NegativeEdge, Ref).
 
 all_variables(0) -> [];
 all_variables({terminal, _}) -> [];
