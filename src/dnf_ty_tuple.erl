@@ -85,8 +85,10 @@ normalize(DnfTyTuple, PVar, NVar, Fixed, M) ->
   ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:tuple(dnf_var_ty_tuple:var(Var)) end, M).
 
 normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty
-normalize_no_vars({terminal, 1}, S1, S2, N, Fixed, M) ->
-  phi_norm(S1, S2, N, Fixed, M);
+normalize_no_vars({terminal, 1}, T1, T2, N, Fixed, M) ->
+  Con1 = ?F(ty_rec:normalize(T1, Fixed, M)),
+  Con2 = ?F(ty_rec:normalize(T2, Fixed, M)),
+  Con0 = phi_norm(T1, T2, N, Fixed, M);
 normalize_no_vars({node, TyTuple, L_BDD, R_BDD}, BigS1, BigS2, Negated, Fixed, M) ->
   S1 = ty_tuple:pi1(TyTuple),
   S2 = ty_tuple:pi2(TyTuple),
@@ -95,18 +97,21 @@ normalize_no_vars({node, TyTuple, L_BDD, R_BDD}, BigS1, BigS2, Negated, Fixed, M
   X2 = ?F(normalize_no_vars(R_BDD, BigS1, BigS2, [TyTuple | Negated], Fixed, M)),
   constraint_set:meet(X1, X2).
 
-phi_norm(S1, S2, [], Fixed, M) ->
-  T1 = ?F(ty_rec:normalize(S1, Fixed, M)),
-  T2 = ?F(ty_rec:normalize(S2, Fixed, M)),
-  constraint_set:join(T1, T2);
-phi_norm(S1, S2, [Ty | N], Fixed, M) ->
+phi_norm(T1, T2, [], Fixed, M) -> []; %unsat
+phi_norm(T1, T2, [Ty | N], Fixed, M) ->
+  S1 = ty_tuple:pi1(Ty),
+  S2 = ty_tuple:pi2(Ty),
+  Z1 = ty_rec:diff(T1, S1),
+  Z2 = ty_rec:diff(T2, S2),
+  Con1 = ?F(ty_rec:normalize(Z1, Fixed, M)),
+  Con10 = ?F(phi_norm(Z1, T2, N, Fixed, M)),
+  Con11 = ?F(constraint_set:join())
+
   T1 = ?F(ty_rec:normalize(S1, Fixed, M)),
   T2 = ?F(ty_rec:normalize(S2, Fixed, M)),
 
   T3 =
     ?F(begin
-      TT1 = ty_tuple:pi1(Ty),
-      TT2 = ty_tuple:pi2(Ty),
       X1 = ?F(phi_norm(ty_rec:diff(S1, TT1), S2, N, Fixed, M)),
       X2 = ?F(phi_norm(S1, ty_rec:diff(S2, TT2), N, Fixed, M)),
       constraint_set:meet(X1, X2)
