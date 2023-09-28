@@ -6,24 +6,24 @@
   tally/2
 ]).
 
--define(T(Name, F),
-begin
-  {FTime, FRes} = timer:tc(fun() -> F end),
-  io:format(user, "~p: ~p ", [Name, FTime]),
-  FRes
-end
-).
+empty(Ty) ->
+  case ty_rec:is_empty(Ty) of
+    true -> error({todo, ty_ref:load(Ty)});
+    _ -> ok
+  end.
 
 tally(Constraints, FixedVars) ->
   % TODO heuristic here and benchmark
-  Normalized = ?T(norm, lists:foldl(fun({S, T}, A) ->
-    constraint_set:meet(
-      fun() ->
-        SnT = ty_rec:diff(S, T),
-        ty_rec:normalize(SnT, FixedVars, sets:new())
-      end,
-      fun() -> A end)
-              end, [[]], Constraints)),
+  Normalized = lists:foldl(fun({S, T}, A) ->
+    SnT = ty_rec:diff(S, T),
+    case ty_rec:is_empty(SnT) of
+      true -> io:format(user, "X~p~n", [ty_rec:normalize(SnT, FixedVars, sets:new())]), A;
+      _ ->
+        constraint_set:meet(
+          fun() -> ty_rec:normalize(SnT, FixedVars, sets:new()) end,
+          fun() -> A end)
+    end
+              end, [[]], Constraints),
 
   Saturated = lists:foldl(fun(ConstraintSet, A) ->
     constraint_set:join(

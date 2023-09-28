@@ -114,6 +114,37 @@
 %'a2:=(3 | Int & 'a21a21 -> Int) & (Int -> Int) | (3 | Int & 'a21a21 -> Int) & 'a2a2; 'a22:=Int; 'a21:=3 | Int & 'a21a21;
 %        'a6:=(Int,`tag); 'a10:=Int; 'a12:=Int; 'a4:=Int; 'a8:=Int; 'a20:=Int; 'a14:=Int; 'a5:=Int; 'a19:=Int; 'a3:=Int; 'a1:=Int; 'a7:=
 %        Int; 'a16:=*---1 | 1--* | Int & 'a16a16; 'a17:=1 | Int & 'a17a17; 'a9:=Int | 'a9a9 \ Int}]
+slow_tally_test() ->
+  T0 = t(b(tag), b(tag)),
+  AnyTag = i(t(any(), b(tag)), t(any(), b(tag))),
+  Res = tally:tally(norm_all([
+    { f(v(a4), v(a5)), v(a2) },
+    { f(v(a4), v(a5)), f(v(a15), v(a19)) },
+    {
+      PlusFun,
+      f(t(v(a16), v(a17)), v(a18))
+    },
+
+    { v(a7), v(a5) },
+    { v(a12), v(a7) },
+    { v(a20), v(a12) },
+    { v(a4), v(a8) },
+    { v(a18), v(a15) }
+  ])),
+
+  8 = length(Res),
+  io:format(user, "Res: ~n~p~n", [Res]),
+
+  ok.
+
+%%fun_tally_test() ->
+%%  lists:foreach(fun(Atom) -> norm(v(Atom)) end, ['a1','a2','a3','a4']),
+%%  Res = tally:tally(norm_all([
+%%    { f(v(a1), v(a2)), f(v(a3), v(a4)) }
+%%  ])),
+%%  2 = length(Res),
+%%  ok.
+
 %%slow_tally_test() ->
 %%  T0 = t(b(tag), b(tag)),
 %%  AnyTag = i(t(any(), b(tag)), t(any(), b(tag))),
@@ -169,55 +200,6 @@
 %%  io:format(user, "Res: ~n~p~n", [Res]),
 %%
 %%  ok.
-
-% debug tallying ([] [ ('a7,'a5) ('a12,'a7) ('a20,'a12) ('a4,'a8) ('a18,'a15) (('a4 -> 'a5),'a2) (('a4 -> 'a5),('a15 -> 'a19)) ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18)) ]);;
-% debug tallying ([]
-% [
-%   ('a7,'a5)
-%   ('a12,'a7)
-%   ('a20,'a12)
-
-%   ('a4,'a8)
-%   ('a18,'a15)
-
-%   (('a4 -> 'a5),'a2)
-%   (('a4 -> 'a5),('a15 -> 'a19))
-
-%   ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18))
-% ]);;
-% [DEBUG:tallying]
-%Result:[{'a0:=(`tag,`tag); 'a11:=Int; 'a13:=*---1 | 1--* | Int & 'a13a13 & 'a16a16 | 0 & 'a13a13; 'a18:=Int; 'a15:=Int;
-%'a2:=(3 | Int & 'a21a21 -> Int) & (Int -> Int) | (3 | Int & 'a21a21 -> Int) & 'a2a2; 'a22:=Int; 'a21:=3 | Int & 'a21a21;
-%        'a6:=(Int,`tag); 'a10:=Int; 'a12:=Int; 'a4:=Int; 'a8:=Int; 'a20:=Int; 'a14:=Int; 'a5:=Int; 'a19:=Int; 'a3:=Int; 'a1:=Int; 'a7:=
-%        Int; 'a16:=*---1 | 1--* | Int & 'a16a16; 'a17:=1 | Int & 'a17a17; 'a9:=Int | 'a9a9 \ Int}]
-slow_tally_test() ->
-  PlusFun = i([
-    f(t(r(), r()), r()),
-    f(t(r(), b(float)), b(float)),
-    f(t(b(float), r()), b(float)),
-    f(t(b(float), b(float)), b(float))
-  ]),
-
-  Res = tally:tally(norm_all([
-    { f(v(a4), v(a5)), v(a2) },
-    { f(v(a4), v(a5)), f(v(a15), v(a19)) },
-    {
-      PlusFun,
-      f(t(v(a16), v(a17)), v(a18))
-    },
-
-    { v(a7), v(a5) },
-    { v(a12), v(a7) },
-    { v(a20), v(a12) },
-    { v(a4), v(a8) },
-    { v(a18), v(a15) }
-  ])),
-
-  8 = length(Res),
-  io:format(user, "Res: ~n~p~n", [Res]),
-
-  ok.
-
 
 norm_all(List) ->
   lists:map(fun({S, T}) -> {norm(S), norm(T)} end, List).

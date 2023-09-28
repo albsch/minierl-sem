@@ -106,19 +106,17 @@ normalize(DnfTyFunction, PVar, NVar, Fixed, M) ->
 
 
 normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty
-normalize_no_vars({terminal, 1}, _, _, [], _Fixed, _) -> []; % non-empty
+normalize_no_vars({terminal, 1}, _, _P, [], _Fixed, _) -> []; % non-empty
 normalize_no_vars({terminal, 1}, S, P, [Function | N], Fixed, M) ->
   T1 = ty_function:domain(Function),
   T2 = ty_function:codomain(Function),
-  %% ∃ T1-->T2 ∈ N s.t.
-  %%   T1 is in the domain of the function
-  %%   S is the union of all domains of the positive function intersections
-  X1 = ?F(ty_rec:normalize(ty_rec:intersect(T1, ty_rec:negate(S)), Fixed, M)),
-  X2 = ?F(explore_function_norm(T1, ty_rec:negate(T2), P, Fixed, M)),
-  R1 = ?F(constraint_set:meet(X1, X2)),
-  %% Continue searching for another arrow ∈ N
-  R2 = ?F(normalize_no_vars({terminal, 1}, S, P, N, Fixed, M)),
-  constraint_set:join(R1, R2);
+  case ty_rec:is_empty(T1) of true -> error(todo); _ -> ok end,
+
+  Con1 = ?F(ty_rec:normalize(T1, Fixed, M)),
+  Con2 = ?F(explore_function_norm(T1, ty_rec:negate(T2), P, Fixed, M)),
+  Con0 = ?F(normalize_no_vars({terminal, 1}, S, P, N, Fixed, M)),
+  Con11 = ?F(constraint_set:join(Con1, Con2)),
+  constraint_set:join(Con11, Con0);
 normalize_no_vars({node, Function, L_BDD, R_BDD}, S, P, Negated, Fixed, M) ->
   T1 = ty_function:domain(Function),
 
@@ -127,23 +125,23 @@ normalize_no_vars({node, Function, L_BDD, R_BDD}, S, P, Negated, Fixed, M) ->
     ?F(normalize_no_vars(R_BDD, S, P, [Function | Negated], Fixed, M))
   ).
 
-explore_function_norm(T1, T2, [], Fixed, M) ->
-  NT1 = ?F(ty_rec:normalize(T1, Fixed, M)),
-  NT2 = ?F(ty_rec:normalize(T2, Fixed, M)),
-  constraint_set:join( NT1, NT2 );
-explore_function_norm(T1, T2, [Function | P], Fixed, M) ->
-  NT1 = ?F(ty_rec:normalize(T1, Fixed, M)),
-  NT2 = ?F(ty_rec:normalize(T2, Fixed, M)),
-
+explore_function_norm(T1, T2, [], Fixed, M) -> [];
+explore_function_norm(T1, Acc, [Function | P], Fixed, M) ->
   S1 = ty_function:domain(Function),
   S2 = ty_function:codomain(Function),
 
-  NS1 = ?F(explore_function_norm(T1, ty_rec:intersect(T2, S2), P, Fixed, M)),
-  NS2 = ?F(explore_function_norm(ty_rec:diff(T1, S1), T2, P, Fixed, M)),
+  T1S1 = ty_rec:diff(T1, S1),
+  Acc1 = ty_rec:intersect(Acc, S2),
 
-  constraint_set:join(NT1,
-    ?F(constraint_set:join(NT2,
-      ?F(constraint_set:meet(NS1, NS2))))).
+  Con1 = ?F(ty_rec:normalize(T1S1, Fixed, M)),
+  Con10 = ?F(explore_function_norm(T1S1, Acc, P, Fixed, M)),
+  Con11 = ?F(constraint_set:join(Con1, Con10)),
+
+  Con2 = ?F(ty_rec:normalize(Acc1, Fixed, M)),
+  Con20 = ?F(explore_function_norm(T1, Acc1, P, Fixed, M)),
+  Con22 = ?F(constraint_set:join(Con2, Con20)),
+
+  constraint_set:meet(Con11, Con22).
 
 substitute(0, _, _) -> 0;
 substitute({terminal, 1}, _, _) ->
