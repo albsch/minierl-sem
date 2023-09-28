@@ -10,7 +10,7 @@
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/3]).
 
--export([var/1, function/1, all_variables/1, has_ref/2]).
+-export([var/1, function/1, all_variables/1, has_ref/2, extract_var/1]).
 
 -type dnf_function() :: term().
 -type ty_function() :: dnf_function(). % ty_function:type()
@@ -110,3 +110,23 @@ all_variables(0) -> [];
 all_variables({terminal, Function}) -> dnf_ty_function:all_variables(Function);
 all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
 [Variable] ++ all_variables(PositiveEdge) ++ all_variables(NegativeEdge).
+
+extract_var(0) -> false;
+extract_var({terminal, _}) -> false;
+% more than one variable in dnf
+extract_var({node, Variable, {node, _, _, _}, NegativeEdge}) -> false;
+extract_var({node, Variable, PosEdge, {node, _, _, _}}) -> false;
+% exactly one variable in DNF
+extract_var({node, Variable, A, B}) ->
+  case ((is_empty(A) orelse is_any(A)) andalso (is_empty(B) orelse is_any(B))) of
+    false ->
+      % not **only** a variable
+      false;
+    _ ->
+      % **only** a variable
+      % these invariants are given by BDD
+      false = (is_empty(A) andalso is_empty(B)),
+      false = (is_any(A) andalso is_any(B)),
+      true = (is_any(A) orelse is_any(B)),
+      {is_any(A), Variable}
+  end.

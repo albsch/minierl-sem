@@ -1,4 +1,4 @@
--module(tally_tests).
+-module(tally_tests1).
 -include_lib("eunit/include/eunit.hrl").
 
 -import(test_ast, [norm_css_basic/1, norm_substs/1, norm/1, mu/2, n/1, b/0, b/1, f/2, t/2, i/2, i/1, u/2, u/1, r/1, r/0, none/0, any/0, v/1, subty/2, normalize/3, normalize/2, var_of/1, norm_css/1]).
@@ -72,9 +72,51 @@
 %%
 %%  ok.
 
-% debug tallying ([] [ ('a7,'a5) ('a12,'a7) ('a20,'a12) ('a4,'a8) ('a18,'a15) (('a4 -> 'a5),'a2) (('a4 -> 'a5),('a15 -> 'a19)) ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18)) ]);;
-% Result: 8
-%%res1_test() ->
+
+% debug tallying ([]
+% [
+%   ('a1,Int)
+%   ('a22,'a3)
+%   (1,'a17)
+%   ('a11,Any)
+%   ('a7,'a5)
+%   ('a19,'a14)
+%   ('a20,'a12)
+%   ('a12,'a7)
+%   ('a3,'a1)
+%   ('a10,'a11)
+%   ('a4,'a8)
+%   ('a2,Any)
+%   (3,'a21)
+%   (0,'a12)
+%   ('a18,'a15)
+
+
+%   (('a4 -> 'a5),'a2)
+%   (('a8, `tag),'a6)
+%   ('a2, ('a21 -> 'a22))
+%   ((`tag, `tag),'a0)
+%   (('a11&(Any \ 0)),'a16)
+%   (('a11&(Any \ 0)),'a13)
+%   (('a4 -> 'a5),('a15 -> 'a19))
+%   ('a6,((Any, `tag)&(Any, `tag)))
+%   ('a0,((`tag, `tag)&(`tag, `tag)))
+
+%   (('a6&((Any, `tag)&(Any, `tag))),('a10, `tag))
+%   (('a6&((Any, `tag)&(Any, `tag))),('a9, `tag))
+%   (('a0&((`tag, `tag)&(`tag, `tag))),(`tag, `tag))
+
+%   ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18))
+%   ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a13,'a14) -> 'a20))
+% ]);;
+% [DEBUG:tallying]
+%Result:[{'a0:=(`tag,`tag); 'a11:=Int; 'a13:=*---1 | 1--* | Int & 'a13a13 & 'a16a16 | 0 & 'a13a13; 'a18:=Int; 'a15:=Int;
+%'a2:=(3 | Int & 'a21a21 -> Int) & (Int -> Int) | (3 | Int & 'a21a21 -> Int) & 'a2a2; 'a22:=Int; 'a21:=3 | Int & 'a21a21;
+%        'a6:=(Int,`tag); 'a10:=Int; 'a12:=Int; 'a4:=Int; 'a8:=Int; 'a20:=Int; 'a14:=Int; 'a5:=Int; 'a19:=Int; 'a3:=Int; 'a1:=Int; 'a7:=
+%        Int; 'a16:=*---1 | 1--* | Int & 'a16a16; 'a17:=1 | Int & 'a17a17; 'a9:=Int | 'a9a9 \ Int}]
+%%slow_tally_test() ->
+%%  T0 = t(b(tag), b(tag)),
+%%  AnyTag = i(t(any(), b(tag)), t(any(), b(tag))),
 %%  PlusFun = i([
 %%    f(t(r(), r()), r()),
 %%    f(t(r(), b(float)), b(float)),
@@ -82,31 +124,73 @@
 %%    f(t(b(float), b(float)), b(float))
 %%  ]),
 %%
+%%
 %%  Res = tally:tally(norm_all([
 %%    { f(v(a4), v(a5)), v(a2) },
+%%    { t(v(a8), b(tag)), v(a0) },
+%%    { v(a2), f(v(a21), v(a22)) },
+%%    { T0, v(a0) },
+%%    { i(v(a11), n(r(0))), v(a16) },
+%%    { i(v(a11), n(r(0))), v(a13) },
 %%    { f(v(a4), v(a5)), f(v(a15), v(a19)) },
+%%    { v(a6), AnyTag},
+%%    { v(a0), i(T0, T0) },
+%%    { i(v(a6), AnyTag), t(v(a10), b(tag))},
+%%    { i(v(a0), i(T0, T0)), T0},
 %%    {
 %%      PlusFun,
 %%      f(t(v(a16), v(a17)), v(a18))
 %%    },
+%%    {
+%%      PlusFun,
+%%      f(t(v(a13), v(a14)), v(a20))
+%%    },
 %%
+%%
+%%
+%%
+%%    { v(a1), r() },
+%%    { v(a22), v(a3) },
+%%    { r(1), v(a17) },
+%%    { v(a11), any() },
 %%    { v(a7), v(a5) },
-%%    { v(a12), v(a7) },
+%%    { v(a19), v(a14) },
 %%    { v(a20), v(a12) },
+%%    { v(a12), v(a7) },
+%%    { v(a3), v(a1) },
+%%    { v(a10), v(a11) },
 %%    { v(a4), v(a8) },
+%%    { v(a2), any() },
+%%    { r(3), v(a21) },
+%%    { r(0), v(a12) },
 %%    { v(a18), v(a15) }
 %%  ])),
 %%
-%%  8 = length(Res),
 %%  io:format(user, "Res: ~n~p~n", [Res]),
 %%
 %%  ok.
 
+% debug tallying ([] [ ('a7,'a5) ('a12,'a7) ('a20,'a12) ('a4,'a8) ('a18,'a15) (('a4 -> 'a5),'a2) (('a4 -> 'a5),('a15 -> 'a19)) ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18)) ]);;
+% debug tallying ([]
+% [
+%   ('a7,'a5)
+%   ('a12,'a7)
+%   ('a20,'a12)
 
+%   ('a4,'a8)
+%   ('a18,'a15)
 
-% debug tallying ([] [ ('a20,'a12) ('a4,'a8) ('a18,'a15) (('a4 -> 'a5),'a2) (('a4 -> 'a5),('a15 -> 'a19)) ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18)) ]);;
-% Result: 8
-res1_test() ->
+%   (('a4 -> 'a5),'a2)
+%   (('a4 -> 'a5),('a15 -> 'a19))
+
+%   ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18))
+% ]);;
+% [DEBUG:tallying]
+%Result:[{'a0:=(`tag,`tag); 'a11:=Int; 'a13:=*---1 | 1--* | Int & 'a13a13 & 'a16a16 | 0 & 'a13a13; 'a18:=Int; 'a15:=Int;
+%'a2:=(3 | Int & 'a21a21 -> Int) & (Int -> Int) | (3 | Int & 'a21a21 -> Int) & 'a2a2; 'a22:=Int; 'a21:=3 | Int & 'a21a21;
+%        'a6:=(Int,`tag); 'a10:=Int; 'a12:=Int; 'a4:=Int; 'a8:=Int; 'a20:=Int; 'a14:=Int; 'a5:=Int; 'a19:=Int; 'a3:=Int; 'a1:=Int; 'a7:=
+%        Int; 'a16:=*---1 | 1--* | Int & 'a16a16; 'a17:=1 | Int & 'a17a17; 'a9:=Int | 'a9a9 \ Int}]
+slow_tally_test() ->
   PlusFun = i([
     f(t(r(), r()), r()),
     f(t(r(), b(float)), b(float)),
@@ -122,6 +206,8 @@ res1_test() ->
       f(t(v(a16), v(a17)), v(a18))
     },
 
+    { v(a7), v(a5) },
+    { v(a12), v(a7) },
     { v(a20), v(a12) },
     { v(a4), v(a8) },
     { v(a18), v(a15) }
@@ -131,6 +217,7 @@ res1_test() ->
   io:format(user, "Res: ~n~p~n", [Res]),
 
   ok.
+
 
 norm_all(List) ->
   lists:map(fun({S, T}) -> {norm(S), norm(T)} end, List).

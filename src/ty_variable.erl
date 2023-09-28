@@ -41,13 +41,15 @@ new(Name) ->
 
 % assumption: PVars U NVars is not empty
 smallest(PositiveVariables, NegativeVariables, FixedVariables) ->
-  % true = (length(PositiveVariables) + length(NegativeVariables)) > 0,
+  true = (length(PositiveVariables) + length(NegativeVariables)) > 0,
 
   % fixed variables are higher order than all non-fixed ones, will be picked last
   PositiveVariablesTagged = [{pos, V} || V <- PositiveVariables, not sets:is_element(V, FixedVariables)],
   NegativeVariablesTagged = [{neg, V} || V <- NegativeVariables, not sets:is_element(V, FixedVariables)],
 
-  RestTagged = [{delta, V} || V <- PositiveVariables ++ NegativeVariables, sets:is_element(V, FixedVariables)],
+  RestTagged =
+    [{{delta, neg}, V} || V <- NegativeVariables, sets:is_element(V, FixedVariables)] ++
+    [{{delta, pos}, V} || V <- PositiveVariables, sets:is_element(V, FixedVariables)],
 
   Sort = fun({_, V}, {_, V2}) -> leq(V, V2) end,
   [X | Z] = lists:sort(Sort, PositiveVariablesTagged++NegativeVariablesTagged) ++ lists:sort(Sort, RestTagged),
@@ -55,23 +57,32 @@ smallest(PositiveVariables, NegativeVariables, FixedVariables) ->
   {X, Z}.
 
 
+single(Pol, VPos, VNeg, Ty, VarToTy) ->
+  AccP = lists:foldl(fun(Var, Ty) -> ty_rec:intersect(Ty, VarToTy(Var)) end, Ty, VPos),
+  AccN = lists:foldl(fun(Var, Ty) -> ty_rec:union(Ty, VarToTy(Var)) end, ty_rec:empty(), VNeg),
+  S = ty_rec:diff(AccP, AccN),
+  case Pol of
+    true -> ty_rec:negate(S);
+    _ -> S
+  end.
+
 % (NTLV rule)
 normalize(Ty, PVar, NVar, Fixed, VarToTy, Mx) ->
   SmallestVar = ty_variable:smallest(PVar, NVar, Fixed),
   case SmallestVar of
-    {{pos, Var}, Others} ->
-      % io:format(user, "Single out positive Variable ~p and Rest: ~p~n", [Var, Others]),
-      TyResult = lists:foldl(fun({_, V}, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
-      [[{Var, ty_rec:empty(), ty_rec:negate(TyResult)}]];
-    {{neg, Var}, Others} ->
-      % io:format(user, "Single out negative Variable ~p and Rest: ~p~n", [Var, Others]),
-      TyResult = lists:foldl(fun({_, V}, CTy) -> ty_rec:intersect(CTy, VarToTy(V)) end, Ty, Others),
-      [[{Var, TyResult, ty_rec:any()}]];
-    {{delta, _}, _} ->
+    {{pos, Var}, _Others} ->
+      Singled = single(true, PVar -- [Var], NVar, Ty, VarToTy ),
+      [[{Var, ty_rec:empty(), Singled}]];
+    {{neg, Var}, _Others} ->
+      Singled = single(false, PVar, NVar -- [Var], Ty, VarToTy),
+      [[{Var, Singled, ty_rec:any()}]];
+    {{{delta, _}, _}, _} ->
+      error(todo),
       % io:format(user, "Normalize all fixed variables done! ~p~n", [Ty]),
       % part 1 paper Lemma C.3 and C.11 all fixed variables can be eliminated
       ty_rec:normalize(Ty, Fixed, Mx)
   end.
+
 
 
 

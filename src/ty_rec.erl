@@ -15,7 +15,7 @@
 
 -export([is_equivalent/2, is_subtype/2, normalize/3]).
 
--export([substitute/2, substitute/3, pi/2, all_variables/1]).
+-export([substitute/2, substitute/3, pi/2, all_variables/1, extract_var/1]).
 
 -record(ty, {atom, interval, tuple, function}).
 
@@ -179,8 +179,10 @@ is_any(_Arg0) ->
 
 normalize(TyRef, Fixed, M) ->
   Ty = ty_ref:load(TyRef),
+
+
   AtomNormalize = dnf_var_ty_atom:normalize(Ty#ty.atom, Fixed, M),
-  case AtomNormalize of
+  End = case AtomNormalize of
     [] -> [];
     _ ->
       IntervalNormalize = dnf_var_int:normalize(Ty#ty.interval, Fixed, M),
@@ -199,7 +201,29 @@ normalize(TyRef, Fixed, M) ->
                 end
           end
       end
-  end.
+  end,
+  % CDUCe 361 not the culprit
+%%  case ty_rec:extract_var(TyRef) of
+%%    {true, _} ->
+%%      io:format(user, "Should be simple empty or any constraint but is ~p~n", [End]),
+%%      ok;
+%%    _ -> ok
+%%  end,
+  % CDUCe 360 not the culprit, DEPENDS on 357 for correctness
+%%  case sets:is_subset(sets:from_list(ty_rec:all_variables(TyRef)), Fixed) of
+%%    true ->
+%%      io:format(user, "Should be [] but is ~p (empty: ~p)~n", [End, ty_rec:is_empty(TyRef)]),
+%%      ok;
+%%    _ -> ok
+%%  end,
+  % CDUCe 357 not the culprit
+%%  case ty_rec:is_empty(TyRef) of
+%%    true ->
+%%      io:format(user, "~p~nShould be [[]] but is ~n~p~n", [{TyRef, ty_rec:is_empty(TyRef)}, End]),
+%%      ok;
+%%    _ -> ok
+%%  end,
+  End.
 
 substitute(TyRef, SubstituteMap) ->
   substitute(TyRef, SubstituteMap, #{}).
@@ -266,6 +290,29 @@ all_variables(TyRef) ->
   ++ dnf_var_int:all_variables(Ints)
   ++ dnf_var_ty_tuple:all_variables(Tuples)
   ++ dnf_var_ty_function:all_variables(Functions)).
+
+extract_var(TyRef) ->
+  (Tyt = #ty{
+    atom = Ats,
+    interval = Is,
+    tuple = Tuples,
+    function = Functions
+  }) = ty_ref:load(TyRef),
+
+
+  Atoms = dnf_var_ty_atom:extract_var(Ats),
+  Ints = dnf_var_int:extract_var(Is),
+  Ts = dnf_var_ty_tuple:extract_var(Tuples),
+  Fs = dnf_var_ty_function:extract_var(Functions),
+  % TODO tuples & functions
+
+  case {Atoms, Ints, Ts, Fs} of
+    {X, Y, Z, A} when X == false; Y == false; Z == false; A == false -> false;
+    {{Pol, V}, {Pol, V}, {Pol, V}, {Pol, V}} ->
+      io:format(user, "Got Variable ~p with ~p~n", [V, Pol]),
+      {true, {Pol, V}}
+  end.
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
