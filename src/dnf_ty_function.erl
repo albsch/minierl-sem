@@ -98,11 +98,52 @@ explore_function(T1, T2, [Function | P]) ->
 
 normalize(TyFunction, [], [], Fixed, M) ->
   % optimized NArrow rule
-  normalize_no_vars(TyFunction, ty_rec:empty(), [], [], Fixed, M);
+  L = normalize_cduce(TyFunction, Fixed, M, {[], []}),
+%%  End = normalize_no_vars(TyFunction, ty_rec:empty(), [], [], Fixed, M),
+%%  io:format(user, "GOT: ~p~nVS~n~p~n", [L, End]),
+  L;
 normalize(DnfTyFunction, PVar, NVar, Fixed, M) ->
   Ty = ty_rec:function(dnf_var_ty_function:function(DnfTyFunction)),
   % ntlv rule
   ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:function(dnf_var_ty_function:var(Var)) end, M).
+
+
+normalize_cduce(0, _, _, _) -> [[]]; % empty
+normalize_cduce({terminal, 1}, Fixde, M, PN) -> norm_arrow(Fixde, M, PN); % non-empty
+normalize_cduce({node, Function, L_BDD, R_BDD}, Fixed, M, {P, N}) ->
+  constraint_set:meet(
+    ?F(normalize_cduce(L_BDD, Fixed, M, {[Function | P], N})),
+    ?F(normalize_cduce(R_BDD, Fixed, M, {P, [Function | N]}))
+  ).
+
+
+norm_arrow(Delta, Mem, {LPos, []}) -> [];
+norm_arrow(Delta, Mem, {LPos, [Fneg | N]}) ->
+  T1 = ty_function:domain(Fneg),
+  T2 = ty_function:codomain(Fneg),
+  Con1 = ?F(ty_rec:normalize(T1, Delta, Mem)),
+  Con2 = ?F(aux_arrow(Delta, Mem, T1, ty_rec:negate(T2), LPos)),
+  Con0 = ?F(norm_arrow(Delta, Mem, {LPos, N})),
+  D1 = ?F(constraint_set:join(Con1, Con2)),
+  constraint_set:join(D1, Con0).
+
+
+aux_arrow(Delta, Mem, T1, Acc, []) -> [];
+aux_arrow(Delta, Mem, T1, Acc, [FP | P]) ->
+  S1 = ty_function:domain(FP),
+  S2 = ty_function:codomain(FP),
+
+  T1S1 = ty_rec:diff(T1, S1),
+  Acc1 = ty_rec:intersect(Acc, S2),
+
+  Con1 = ?F(ty_rec:normalize(T1S1, Delta, Mem)),
+  Con10 = ?F(aux_arrow(Delta, Mem, T1S1, Acc, P)),
+  Con11 = ?F(constraint_set:join(Con1, Con10)),
+
+  Con2 = ?F(ty_rec:normalize(Acc1, Delta, Mem)),
+  Con20 = ?F(aux_arrow(Delta, Mem, T1, Acc1, P)),
+  Con22 = ?F(constraint_set:join(Con2, Con20)),
+  constraint_set:meet(Con11, Con22).
 
 
 normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty

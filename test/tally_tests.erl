@@ -74,38 +74,6 @@
 
 % debug tallying ([] [ ('a7,'a5) ('a12,'a7) ('a20,'a12) ('a4,'a8) ('a18,'a15) (('a4 -> 'a5),'a2) (('a4 -> 'a5),('a15 -> 'a19)) ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18)) ]);;
 % Result: 8
-%%res1_test() ->
-%%  PlusFun = i([
-%%    f(t(r(), r()), r()),
-%%    f(t(r(), b(float)), b(float)),
-%%    f(t(b(float), r()), b(float)),
-%%    f(t(b(float), b(float)), b(float))
-%%  ]),
-%%
-%%  Res = tally:tally(norm_all([
-%%    { f(v(a4), v(a5)), v(a2) },
-%%    { f(v(a4), v(a5)), f(v(a15), v(a19)) },
-%%    {
-%%      PlusFun,
-%%      f(t(v(a16), v(a17)), v(a18))
-%%    },
-%%
-%%    { v(a7), v(a5) },
-%%    { v(a12), v(a7) },
-%%    { v(a20), v(a12) },
-%%    { v(a4), v(a8) },
-%%    { v(a18), v(a15) }
-%%  ])),
-%%
-%%  8 = length(Res),
-%%  io:format(user, "Res: ~n~p~n", [Res]),
-%%
-%%  ok.
-
-
-
-% debug tallying ([] [ ('a20,'a12) ('a4,'a8) ('a18,'a15) (('a4 -> 'a5),'a2) (('a4 -> 'a5),('a15 -> 'a19)) ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18)) ]);;
-% Result: 8
 res1_test() ->
   PlusFun = i([
     f(t(r(), r()), r()),
@@ -122,6 +90,8 @@ res1_test() ->
       f(t(v(a16), v(a17)), v(a18))
     },
 
+    { v(a7), v(a5) },
+    { v(a12), v(a7) },
     { v(a20), v(a12) },
     { v(a4), v(a8) },
     { v(a18), v(a15) }
@@ -131,6 +101,36 @@ res1_test() ->
   io:format(user, "Res: ~n~p~n", [Res]),
 
   ok.
+
+
+
+% debug tallying ([] [ ('a20,'a12) ('a4,'a8) ('a18,'a15) (('a4 -> 'a5),'a2) (('a4 -> 'a5),('a15 -> 'a19)) ((((Int,Int) -> Int)&(((Int,`float) -> `float)&(((`float,Int) -> `float)&((`float,`float) -> `float)))),(('a16,'a17) -> 'a18)) ]);;
+% Result: 8
+%%res1_test() ->
+%%  PlusFun = i([
+%%    f(t(r(), r()), r()),
+%%    f(t(r(), b(float)), b(float)),
+%%    f(t(b(float), r()), b(float)),
+%%    f(t(b(float), b(float)), b(float))
+%%  ]),
+%%
+%%  Res = tally:tally(norm_all([
+%%    { f(v(a4), v(a5)), v(a2) },
+%%    { f(v(a4), v(a5)), f(v(a15), v(a19)) },
+%%    {
+%%      PlusFun,
+%%      f(t(v(a16), v(a17)), v(a18))
+%%    },
+%%
+%%    { v(a20), v(a12) },
+%%    { v(a4), v(a8) },
+%%    { v(a18), v(a15) }
+%%  ])),
+%%
+%%  8 = length(Res),
+%%  io:format(user, "Res: ~n~p~n", [Res]),
+%%
+%%  ok.
 
 norm_all(List) ->
   lists:map(fun({S, T}) -> {norm(S), norm(T)} end, List).
