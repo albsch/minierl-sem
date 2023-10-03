@@ -10,12 +10,14 @@ tally(Constraints, FixedVars) ->
   % TODO heuristic here and benchmark
   Normalized = lists:foldl(fun({S, T}, A) ->
     constraint_set:meet(
+      fun() -> A end,
       fun() ->
         SnT = ty_rec:diff(S, T),
         ty_rec:normalize(SnT, FixedVars, sets:new())
-      end,
-      fun() -> A end)
+      end
+    )
               end, [[]], Constraints),
+  io:format(user, "Phase1~p~n", [length(Normalized)]),
 
   Saturated = lists:foldl(fun(ConstraintSet, A) ->
     constraint_set:join(
@@ -24,6 +26,7 @@ tally(Constraints, FixedVars) ->
                            end, [], Normalized),
 
   Saturated,
+  io:format(user, "Phase2~n", []),
 
   case Saturated of
     [] -> {error, []};

@@ -78,11 +78,48 @@ phi(S1, S2, [Ty | N]) ->
 
 normalize(TyTuple, [], [], Fixed, M) ->
   % optimized NProd rule
-  normalize_no_vars(TyTuple, ty_rec:any(), ty_rec:any(), _NegatedTuples = [], Fixed, M);
+  End = normalize_no_vars(TyTuple, ty_rec:any(), ty_rec:any(), _NegatedTuples = [], Fixed, M),
+%%  End = normalize_cduce(TyTuple, Fixed, M, {[], []}),
+  End;
 normalize(DnfTyTuple, PVar, NVar, Fixed, M) ->
   Ty = ty_rec:tuple(dnf_var_ty_tuple:tuple(DnfTyTuple)),
   % ntlv rule
   ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:tuple(dnf_var_ty_tuple:var(Var)) end, M).
+
+normalize_cduce(0, _, _, _) -> [[]]; % empty
+normalize_cduce({terminal, 1}, Fixde, M, PN) -> norm_prod(Fixde, M, PN); % non-empty
+normalize_cduce({node, Function, L_BDD, R_BDD}, Fixed, M, {P, N}) ->
+  constraint_set:meet(
+    ?F(normalize_cduce(L_BDD, Fixed, M, {[Function | P], N})),
+    ?F(normalize_cduce(R_BDD, Fixed, M, {P, [Function | N]}))
+  ).
+
+norm_prod(Delta, Mem, {P, N}) ->
+  NegPart = fun
+              Neg(T1, T2, []) -> [];
+              Neg(T1, T2, [SS | Rest]) ->
+                S1 = ty_tuple:pi1(SS),
+                S2 = ty_tuple:pi2(SS),
+                Z1 = ty_rec:diff(T1, S1),
+                Z2 = ty_rec:diff(T2, S2),
+
+                Con1 = ?F(ty_rec:normalize(Z1, Delta, Mem)),
+                Con10 = ?F(Neg(Z1, T2, Rest)),
+                Con11 = ?F(constraint_set:join(Con1, Con10)),
+
+                Con2 = ?F(ty_rec:normalize(Z2, Delta, Mem)),
+                Con20 = ?F(Neg(T1, Z2, Rest)),
+                Con22 = ?F(constraint_set:join(Con2, Con20)),
+                constraint_set:meet(Con11, Con22)
+            end,
+  BigCap = ty_tuple:big_intersect(P),
+  T1 = ty_tuple:pi1(BigCap),
+  T2 = ty_tuple:pi2(BigCap),
+  Con1 = ?F(ty_rec:normalize(T1, Delta, Mem)),
+  Con2 = ?F(ty_rec:normalize(T2, Delta, Mem)),
+  Con0 = ?F(NegPart(T1, T2, N)),
+  D1 = ?F(constraint_set:join(Con1, Con2)),
+  constraint_set:join(D1, Con0).
 
 normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty
 normalize_no_vars({terminal, 1}, S1, S2, N, Fixed, M) ->

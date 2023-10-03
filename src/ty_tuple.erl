@@ -7,7 +7,7 @@
 -export([compare/2, equal/2]).
 
 -behavior(b_tuple).
--export([tuple/2, pi1/1, pi2/1, has_ref/2]).
+-export([tuple/2, pi1/1, pi2/1, has_ref/2, big_intersect/1]).
 
 compare(A, B) when A < B -> -1;
 compare(A, B) when A > B -> 1;
@@ -23,6 +23,14 @@ pi2({ty_tuple, _, Ref}) -> Ref.
 has_ref({ty_tuple, Ref, _}, Ref) -> true;
 has_ref({ty_tuple, _, Ref}, Ref) -> true;
 has_ref({ty_tuple, _, _}, _Ref) -> false.
+
+big_intersect(AllTuples) ->
+    {NS, NT} = lists:foldl(
+        fun(Ty, {S, T}) ->
+            {ty_rec:intersect(pi1(Ty), S), ty_rec:intersect(pi2(Ty), T)}
+        end,
+        {ty_rec:any(), ty_rec:any()}, AllTuples),
+    {ty_tuple, NS, NT}.
 
 
 -ifdef(TEST).

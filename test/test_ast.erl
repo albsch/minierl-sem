@@ -111,6 +111,8 @@ mu(Var, Ty) -> {mu, Var, Ty}.
 any() -> any.
 none() -> none.
 
+d(X, Y) -> {intersection, X, n(Y)}.
+
 u(X, Y) -> {union, X, Y}.
 u([]) -> none();
 u([X]) -> X;

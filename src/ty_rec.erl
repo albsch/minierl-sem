@@ -203,26 +203,35 @@ normalize(TyRef, Fixed, M) ->
       end
   end,
   % CDUCe 361 not the culprit
-%%  case ty_rec:extract_var(TyRef) of
-%%    {true, _} ->
-%%      io:format(user, "Should be simple empty or any constraint but is ~p~n", [End]),
-%%      ok;
-%%    _ -> ok
-%%  end,
+  case ty_rec:extract_var(TyRef) of
+    {true, {Pol, Varrr}} ->
+      [[{Var, X, Y}]] = End,
+      true = (ty_rec:is_empty(X) andalso ty_rec:is_empty(Y)) orelse
+        (ty_rec:is_any(X) andalso ty_rec:is_any(Y)),
+%%      io:format(user, "Should be simple empty or any constraint but is ~p~n", [{Pol, Varrr}]),
+      ok;
+    _ -> ok
+  end,
+
   % CDUCe 360 not the culprit, DEPENDS on 357 for correctness
-%%  case sets:is_subset(sets:from_list(ty_rec:all_variables(TyRef)), Fixed) of
-%%    true ->
-%%      io:format(user, "Should be [] but is ~p (empty: ~p)~n", [End, ty_rec:is_empty(TyRef)]),
-%%      ok;
-%%    _ -> ok
-%%  end,
+  case not ty_rec:is_empty(TyRef) andalso sets:is_subset(sets:from_list(ty_rec:all_variables(TyRef)), Fixed) of
+    true ->
+      case End of
+        [] -> ok;
+        _ ->
+          io:format(user, "Should be [] but is ~p (empty: ~p)~n", [End, ty_rec:is_empty(TyRef)]),
+          error(todo)
+      end;
+    _ -> ok
+  end,
   % CDUCe 357 not the culprit
-%%  case ty_rec:is_empty(TyRef) of
-%%    true ->
-%%      io:format(user, "~p~nShould be [[]] but is ~n~p~n", [{TyRef, ty_rec:is_empty(TyRef)}, End]),
-%%      ok;
-%%    _ -> ok
-%%  end,
+  case ty_rec:is_empty(TyRef) andalso (End /= [[]]) of
+    true ->
+      io:format(user, "~p~nShould be [[]] but is ~n~p~n", [{TyRef, ty_rec:is_empty(TyRef)}, End]),
+      error(todo),
+      ok;
+    _ -> ok
+  end,
   End.
 
 substitute(TyRef, SubstituteMap) ->
@@ -309,7 +318,7 @@ extract_var(TyRef) ->
   case {Atoms, Ints, Ts, Fs} of
     {X, Y, Z, A} when X == false; Y == false; Z == false; A == false -> false;
     {{Pol, V}, {Pol, V}, {Pol, V}, {Pol, V}} ->
-      io:format(user, "Got Variable ~p with ~p~n", [V, Pol]),
+%%      io:format(user, "Got Variable ~p with ~p~n", [V, Pol]),
       {true, {Pol, V}}
   end.
 

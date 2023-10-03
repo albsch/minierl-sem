@@ -1,4 +1,5 @@
--module(constraint_set).
+-module(constraint_set2).
+-vsn({2,0,0}).
 
 %% API
 -export([set_of_constraint_sets/1, constraint_set/1, constraint/3, constraint/1, is_smaller/2]).
@@ -24,15 +25,12 @@ saturate(C, FixedVariables, Memo) ->
 pick_bounds_in_c([], _) -> none;
 pick_bounds_in_c([{Var, S, T} | Cs], Memo) ->
   case (ty_rec:is_empty(S) orelse ty_rec:is_subtype(ty_rec:any(), T)) of
-    true ->
-      pick_bounds_in_c(Cs, Memo);
+    true -> pick_bounds_in_c(Cs, Memo);
     false ->
       SnT = ty_rec:intersect(S, ty_rec:negate(T)),
       case sets:is_element(SnT, Memo) of
-        true ->
-          pick_bounds_in_c(Cs, Memo);
-        _ ->
-          {Var, S, T}
+        true -> pick_bounds_in_c(Cs, Memo);
+        _ -> {Var, S, T}
       end
   end
 .
@@ -44,11 +42,10 @@ constraint({Var, Ty1, Ty2}) -> {Var, Ty1, Ty2}.
 
 meet(S1, S2) ->
   Res = S1(),
-  R = case Res of
+  case Res of
     [] -> [];
     _ -> merge_and_meet(Res, S2())
-  end,
-  R.
+  end.
 join(S1, S2) ->
   Res = S1(),
   case Res of
@@ -58,30 +55,14 @@ join(S1, S2) ->
 
 merge_and_meet([], _Set2) -> [];
 merge_and_meet(_Set1, []) -> [];
+merge_and_meet([[]], Set2) -> Set2;
+merge_and_meet(Set1, [[]]) -> Set1;
 merge_and_meet(La, Lb) ->
-  Res = lists:foldl(
-    fun(M1, Acc1) ->
-      lists:foldl(fun(M2, Acc2) ->
-        add(nunion(M1, M2), Acc2)
-                  end, Acc1, Lb)
-    end,
-    [], La),
+  R = lists:map(fun(E) -> unionlist(Lb, E) end, La),
+  R2 = lists:foldl(fun(NewS, All) -> merge_and_join(NewS, All) end, [], R),
+  minimize(R2).
 
-  Res.
-
-add(M, L) -> add(M, L, []).
-
-add(M, [], Acc) -> [M | Acc];
-add(M, [MM | LL], Acc) ->
-  case is_smaller(M, MM) of
-    true -> add(M, LL, Acc);
-    _ ->
-      case is_smaller(MM, M) of
-        true -> ([MM | Acc] ++ LL);
-        _ -> add(M, LL, [MM | Acc])
-      end
-  end.
-
+unionlist(L, A) -> lists:map(fun(E) -> nunion(A, E) end, L).
 
 minimize(S) -> minimize(S, S).
 
@@ -109,32 +90,15 @@ nunion(S = [{_, _, _} | _C1], [Z = {_, _, _} | C2]) ->
   [Z] ++ nunion(C2, S).
 
 
+merge_and_join([[]], _Set2) -> [[]];
+merge_and_join(_Set1, [[]]) -> [[]];
 merge_and_join([], Set) -> Set;
 merge_and_join(Set, []) -> Set;
 merge_and_join(S1, S2) ->
-  merge_and_join(S1, S2, []).
-
-merge_and_join([], S2, Result) ->
-  S2 ++ Result;
-merge_and_join([E1 | SS1], S2, Result) ->
-  {NewS2, NewResult} = append(E1, S2, Result),
-  merge_and_join(SS1, NewS2, NewResult).
-
-append(E1, S2, Result) ->
-  Loop =
-    fun
-      L([], Accs2) -> {Accs2, [E1 | Result]};
-      L([E2 | SS2], Accs2) ->
-        case is_smaller(E1, E2) of
-          true -> {Accs2 ++ SS2, [E1 | Result]};
-          _ ->
-            case is_smaller(E2, E1) of
-              true -> {Accs2 ++ SS2, [E2 | Result]};
-              _ -> L(SS2, [E2 | Accs2])
-            end
-        end
-    end,
-  Loop(S2, []).
+  MayAdd = fun (S, Con) -> (not (has_smaller_constraint(Con, S))) end,
+  S22 = lists:filter(fun(C) -> MayAdd(S1, C) end, S2),
+  S11 = lists:filter(fun(C) -> MayAdd(S22, C) end, S1),
+  lists:map(fun lists:usort/1, lists:usort(S11 ++ S22)).
 
 
 has_smaller_constraint(_Con, []) -> false;
@@ -154,16 +118,15 @@ has_smaller_constraint_w(Con, [C | S]) ->
 % C1 and C2 are sorted by variable order
 is_smaller([], _C2) -> true;
 is_smaller(_C1, []) -> false;
-is_smaller([{V1, T1, T2} | C1], [{V2, S1, S2} | C2])
-  when V1 == V2 ->
+is_smaller([{V1, T1, T2} | C1], [{V2, S1, S2} | C2]) when V1 == V2 ->
   case ty_rec:is_subtype(T1, S1) andalso ty_rec:is_subtype(S2, T2) of
     true -> is_smaller(C1, C2);
     _ -> false
   end;
-%%is_smaller([{V1, _, _} | _C1], [{V2, _, _} | _C2]) when V1 < V2 ->
-%%  % V1 is not in the other set
-%%  % not smaller
-%%  false;
+is_smaller([{V1, _, _} | _C1], [{V2, _, _} | _C2]) when V1 < V2 ->
+  % V1 is not in the other set
+  % not smaller
+  false;
 is_smaller(C1, [{_V2, _, _} | C2]) ->
   is_smaller(C1, C2).
 
