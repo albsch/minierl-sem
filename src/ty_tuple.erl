@@ -30,8 +30,15 @@ has_ref({ty_tuple, _, _}, _Ref) -> false.
 
 usage_test() ->
     % (int, int)
-    TIa = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
-    TIb = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
+    Int = ty_interval:interval('*', '*'),
+    false = ty_interval:is_empty(Int),
+    true = ty_interval:is_any(Int),
+    DnfVarInt = dnf_var_int:int(Int),
+    io:format(user, "~p~n", [DnfVarInt]),
+    false = dnf_var_int:is_empty(DnfVarInt),
+    true = dnf_var_int:is_any(DnfVarInt),
+    TIa = ty_rec:interval(DnfVarInt),
+    TIb = ty_rec:interval(DnfVarInt),
 
     _Ty_Tuple = ty_tuple:tuple(TIa, TIb),
 

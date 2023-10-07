@@ -48,8 +48,8 @@ is_empty(TyBDD) -> is_empty(
   _NegatedTuples = []
 ).
 
-is_empty(0, _, _, _) -> true;
-is_empty({terminal, 1}, S1, S2, N) ->
+is_empty({leaf, 0}, _, _, _) -> true;
+is_empty({leaf, 1}, S1, S2, N) ->
   phi(S1, S2, N);
 is_empty({node, TyTuple, L_BDD, R_BDD}, BigS1, BigS2, Negated) ->
   S1 = ty_tuple:pi1(TyTuple),
@@ -84,8 +84,8 @@ normalize(DnfTyTuple, PVar, NVar, Fixed, M) ->
   % ntlv rule
   ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:tuple(dnf_var_ty_tuple:var(Var)) end, M).
 
-normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty
-normalize_no_vars({terminal, 1}, S1, S2, N, Fixed, M) ->
+normalize_no_vars({leaf, 0}, _, _, _, _Fixed, _) -> [[]]; % empty
+normalize_no_vars({leaf, 1}, S1, S2, N, Fixed, M) ->
   phi_norm(S1, S2, N, Fixed, M);
 normalize_no_vars({node, TyTuple, L_BDD, R_BDD}, BigS1, BigS2, Negated, Fixed, M) ->
   S1 = ty_tuple:pi1(TyTuple),
@@ -115,9 +115,9 @@ phi_norm(S1, S2, [Ty | N], Fixed, M) ->
   constraint_set:join(T1, ?F(constraint_set:join(T2, T3))).
 
 
-substitute(0, _, _) -> 0;
-substitute({terminal, 1}, _, _) ->
-  {terminal, 1};
+substitute({leaf, 0}, _, _) -> {leaf, 0};
+substitute({leaf, 1}, _, _) ->
+  {leaf, 1};
 substitute({node, TyTuple, L_BDD, R_BDD}, Map, Memo) ->
   S1 = ty_tuple:pi1(TyTuple),
   S2 = ty_tuple:pi2(TyTuple),
@@ -132,8 +132,7 @@ substitute({node, TyTuple, L_BDD, R_BDD}, Map, Memo) ->
     intersect(negate(tuple(NewTyTuple)), R_BDD)
     ).
 
-has_ref(0, _) -> false;
-has_ref({terminal, _}, _) -> false;
+has_ref({leaf, _}, _) -> false;
 has_ref({node, Tuple, PositiveEdge, NegativeEdge}, Ref) ->
   ty_tuple:has_ref(Tuple, Ref)
     orelse
@@ -141,8 +140,7 @@ has_ref({node, Tuple, PositiveEdge, NegativeEdge}, Ref) ->
     orelse
     has_ref(NegativeEdge, Ref).
 
-all_variables(0) -> [];
-all_variables({terminal, _}) -> [];
+all_variables({leaf, _}) -> [];
 all_variables({node, Tuple, PositiveEdge, NegativeEdge}) ->
   ty_rec:all_variables(ty_tuple:pi1(Tuple))
   ++ ty_rec:all_variables(ty_tuple:pi2(Tuple))

@@ -17,7 +17,7 @@
 -type dnf_var_ty_atom() :: term().
 
 -spec ty_atom(ty_atom()) -> dnf_var_ty_atom().
-ty_atom(Atom) -> gen_bdd:terminal(?P, Atom).
+ty_atom(Atom) -> gen_bdd:leaf(?P, Atom).
 
 -spec ty_var(ty_variable()) -> dnf_var_ty_atom().
 ty_var(Var) -> gen_bdd:element(?P, Var).
@@ -50,8 +50,7 @@ compare(B1, B2) -> gen_bdd:compare(?P, B1, B2).
 % Emptiness for variable atom DNFs
 % ==
 
-is_empty(0) -> true;
-is_empty({terminal, Atom}) ->
+is_empty({leaf, Atom}) ->
   ty_atom:is_empty(Atom);
 is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
   is_empty(PositiveEdge)
@@ -60,8 +59,9 @@ is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
 
 normalize(Ty, Fixed, M) -> normalize(Ty, [], [], Fixed, M).
 
-normalize(0, _, _, _, _) -> [[]]; % satisfiable
-normalize({terminal, Atom}, PVar, NVar, Fixed, M) ->
+normalize({leaf, 0}, _, _, _, _) -> [[]]; % satisfiable
+normalize({leaf, Atom}, PVar, NVar, Fixed, M) ->
+  error(todo, leaf_not_zero),
   ty_atom:normalize(Atom, PVar, NVar, Fixed, M);
 normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar, Fixed, M) ->
   constraint_set:merge_and_meet(
@@ -71,8 +71,9 @@ normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar, Fixed, M) ->
 
 substitute(T, M) -> substitute(T, M, [], []).
 
-substitute(0, _, _, _) -> 0;
-substitute({terminal, Atom}, Map, Pos, Neg) ->
+substitute({leaf, 0}, _, _, _) -> 0;
+substitute({leaf, Atom}, Map, Pos, Neg) ->
+  error(todo_leaf_not_zero),
   AllPos = lists:map(
     fun(Var) ->
       Substitution = maps:get(Var, Map, ty_rec:variable(Var)),
@@ -95,7 +96,8 @@ substitute({node, Variable, PositiveEdge, NegativeEdge}, Map, P, N) ->
   union(LBdd, RBdd).
 
 
-all_variables(0) -> [];
-all_variables({terminal, _}) -> [];
+% TODO leaf is not zero
+all_variables({leaf, 0}) -> [];
+all_variables({leaf, _}) -> [];
 all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
 [Variable] ++ all_variables(PositiveEdge) ++ all_variables(NegativeEdge).

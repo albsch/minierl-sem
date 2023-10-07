@@ -8,7 +8,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/3, substitute/2]).
+-export([is_empty/1, is_any/1, normalize/3, substitute/2]).
 
 -export([var/1, int/1,  all_variables/1]).
 
@@ -17,7 +17,7 @@
 -type dnf_var_int() :: term().
 
 -spec int(interval()) -> dnf_var_int().
-int(Interval) -> gen_bdd:terminal(?P, Interval).
+int(Interval) -> gen_bdd:leaf(?P, Interval).
 
 -spec var(variable()) -> dnf_var_int().
 var(Var) -> gen_bdd:element(?P, Var).
@@ -33,9 +33,7 @@ intersect(B1, B2) -> gen_bdd:intersect(?P, B1, B2).
 diff(B1, B2) -> gen_bdd:diff(?P, B1, B2).
 negate(B1) -> gen_bdd:negate(?P, B1).
 
-eval(B) -> gen_bdd:eval(?P, B).
 is_any(B) -> gen_bdd:is_any(?P, B).
-
 
 
 % ==
@@ -49,13 +47,14 @@ compare(B1, B2) -> gen_bdd:compare(?P, B1, B2).
 % ==
 % Emptiness for variable interval DNFs
 % ==
+is_empty(DnfVarInt) ->
+  gen_bdd:is_empty(?P, DnfVarInt).
 
-is_empty(0) -> true;
-is_empty({terminal, Interval}) ->
-  ty_interval:is_empty(Interval);
-is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
-  is_empty(PositiveEdge)
-    andalso is_empty(NegativeEdge).
+%%is_empty({leaf, Interval}) ->
+%%  ty_interval:is_empty(Interval);
+%%is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
+%%  is_empty(PositiveEdge)
+%%    andalso is_empty(NegativeEdge).
 
 
 normalize(Ty, Fixed, M) -> normalize(Ty, [], [], Fixed, M).
@@ -130,8 +129,8 @@ usage_test() ->
 
   Bdd = dnf_var_int:union(dnf_var_int:union(U1, U2), U3),
 
-%%  io:format(user, "~p~n", [Bdd]),
   false = dnf_var_int:is_empty(Bdd),
+  false = dnf_var_int:is_any(Bdd),
 
   ok.
 
@@ -142,12 +141,43 @@ compact_ints_test() ->
   Ib = ty_interval:interval(6, 10),
 
   BIntA = dnf_var_int:int(Ia),
+  false = dnf_var_int:is_empty(BIntA),
+  false = dnf_var_int:is_any(BIntA),
+
   BIntB = dnf_var_int:int(Ib),
-
+  false = dnf_var_int:is_empty(BIntB),
+  false = dnf_var_int:is_any(BIntB),
   Bdd = dnf_var_int:union(BIntA, BIntB),
-
-%%  io:format(user, "~p~n", [Bdd]),
   false = dnf_var_int:is_empty(Bdd),
+  false = dnf_var_int:is_any(Bdd),
+
+  ok.
+
+variables_test() ->
+  A = ty_variable:new("a1"),
+  BVar = dnf_var_int:var(A),
+  false = dnf_var_int:is_empty(BVar),
+  false = dnf_var_int:is_any(BVar),
+
+  Ia = ty_interval:interval('*', '*'),
+  BIntA = dnf_var_int:int(Ia),
+  true = dnf_var_int:is_any(BIntA),
+
+  B1 = dnf_var_int:union(BVar, BIntA),
+  true = dnf_var_int:is_any(B1),
+  false = dnf_var_int:is_empty(B1),
+
+  B2 = dnf_var_int:intersect(BVar, BIntA),
+  false = dnf_var_int:is_any(B2),
+  false = dnf_var_int:is_empty(B2),
+
+  B3 = dnf_var_int:intersect(dnf_var_int:negate(BVar), BIntA),
+  false = dnf_var_int:is_any(B3),
+  false = dnf_var_int:is_empty(B3),
+
+  B4 = dnf_var_int:intersect(dnf_var_int:negate(BVar), B2),
+  false = dnf_var_int:is_any(B3),
+  true = dnf_var_int:is_empty(B4),
 
   ok.
 

@@ -18,7 +18,7 @@
 -type dnf_var_function() :: term().
 
 -spec function(ty_function()) -> dnf_var_function().
-function(Tuple) -> gen_bdd:terminal(?P, Tuple).
+function(Tuple) -> gen_bdd:leaf(?P, Tuple).
 
 -spec var(variable()) -> dnf_var_function().
 var(Var) -> gen_bdd:element(?P, Var).
@@ -45,8 +45,8 @@ equal(B1, B2) -> gen_bdd:equal(?P, B1, B2).
 compare(B1, B2) -> gen_bdd:compare(?P, B1, B2).
 
 
-is_empty(0) -> true;
-is_empty({terminal, Function}) ->
+is_empty({leaf, 0}) -> true;
+is_empty({leaf, Function}) ->
   dnf_ty_function:is_empty(Function);
 is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
   is_empty(PositiveEdge)
@@ -54,8 +54,8 @@ is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
 
 normalize(Ty, Fixed, M) -> normalize(Ty, [], [], Fixed, M).
 
-normalize(0, _, _, _, _) -> [[]]; % satisfiable
-normalize({terminal, Function}, PVar, NVar, Fixed, M) ->
+normalize({leaf, 0}, _, _, _, _) -> [[]]; % satisfiable
+normalize({leaf, Function}, PVar, NVar, Fixed, M) ->
   case ty_ref:is_normalized_memoized(Function, Fixed, M) of
     true ->
       % TODO test case
@@ -73,8 +73,8 @@ normalize({node, Variable, PositiveEdge, NegativeEdge}, PVar, NVar, Fixed, M) ->
 
 substitute(T, M, Memo) -> substitute(T, M, Memo, [], []).
 
-substitute(0, _, _, _, _) -> 0;
-substitute({terminal, Function}, Map, Memo, Pos, Neg) ->
+substitute({leaf, 0}, _, _, _, _) -> {leaf, 0};
+substitute({leaf, Function}, Map, Memo, Pos, Neg) ->
   AllPos = lists:map(
     fun(Var) ->
       Substitution = maps:get(Var, Map, ty_rec:variable(Var)),
@@ -98,15 +98,15 @@ substitute({node, Variable, PositiveEdge, NegativeEdge}, Map, Memo, P, N) ->
 
   union(LBdd, RBdd).
 
-has_ref(0, _) -> false;
-has_ref({terminal, Function}, Ref) ->
+has_ref({leaf, 0}, _) -> false;
+has_ref({leaf, Function}, Ref) ->
   dnf_ty_function:has_ref(Function, Ref);
 has_ref({node, _Variable, PositiveEdge, NegativeEdge}, Ref) ->
   has_ref(PositiveEdge, Ref) orelse has_ref(NegativeEdge, Ref).
 
 
 
-all_variables(0) -> [];
-all_variables({terminal, Function}) -> dnf_ty_function:all_variables(Function);
+all_variables({leaf, 0}) -> [];
+all_variables({leaf, Function}) -> dnf_ty_function:all_variables(Function);
 all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
 [Variable] ++ all_variables(PositiveEdge) ++ all_variables(NegativeEdge).

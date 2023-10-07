@@ -12,12 +12,6 @@
 % any type can be checked for (structural) any
 -callback is_any(x()) -> boolean().
 
-
-% any type can be evaluated
-% if empty, returns `empty`
-% if non-empty, returns a witness for the type
--callback eval(x()) -> empty | {witness, x()}.
-
 % any type can be checked for (semantic) emptiness
 -callback is_empty(x()) -> boolean().
 

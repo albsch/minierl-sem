@@ -9,16 +9,13 @@
 -behavior(type).
 -export([empty/0, any/0]).
 -export([union/2, intersect/2, diff/2, negate/1, is_any/1]).
--export([is_empty/1, eval/1, normalize/5]).
+-export([is_empty/1, normalize/5]).
 
 -behavior(b_interval).
 -export([interval/2, cointerval/2]).
 
 %% representation
 %% left? range* right?
-
-% TODO witness
-eval(_) -> erlang:error("TODO").
 
 empty() -> [].
 any() -> [any_int].
@@ -141,8 +138,10 @@ usage_test() ->
     Ib = ty_interval:cointerval(2, 10),
     Ix = ty_interval:intersect(Ia, Ib),
     false = ty_interval:is_empty(Ix),
+    false = ty_interval:is_any(Ix),
     Ic = ty_interval:interval(1, 1),
     true = ty_interval:is_empty(ty_interval:intersect(Ix, Ic)),
+    false = ty_interval:is_any(ty_interval:intersect(Ix, Ic)),
 
     ok.
 

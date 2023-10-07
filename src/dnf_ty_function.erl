@@ -54,11 +54,11 @@ is_empty(TyDnf) ->
     ty_rec:empty(), [], []
   ).
 
-is_empty(0, _, _, _) -> true;
+is_empty({leaf, 0}, _, _, _) -> true;
 % TODO should only be {terminal, 1}, not just 1!
 %%is_empty(1, _, _, []) -> false;
-is_empty({terminal, 1}, _, _, []) -> false;
-is_empty({terminal, 1}, S, P, [Function | N]) ->
+is_empty({leaf, 1}, _, _, []) -> false;
+is_empty({leaf, 1}, S, P, [Function | N]) ->
   T1 = ty_function:domain(Function),
   T2 = ty_function:codomain(Function),
   (
@@ -71,7 +71,7 @@ is_empty({terminal, 1}, S, P, [Function | N]) ->
   )
   %% Continue searching for another arrow ∈ N
     orelse
-    is_empty({terminal, 1}, S, P, N)
+    is_empty({leaf, 1}, S, P, N)
   ;
 is_empty({node, Function, L_BDD, R_BDD}, S, P, N) ->
   T1 = ty_function:domain(Function),
@@ -105,9 +105,9 @@ normalize(DnfTyFunction, PVar, NVar, Fixed, M) ->
   ty_variable:normalize(Ty, PVar, NVar, Fixed, fun(Var) -> ty_rec:function(dnf_var_ty_function:var(Var)) end, M).
 
 
-normalize_no_vars(0, _, _, _, _Fixed, _) -> [[]]; % empty
-normalize_no_vars({terminal, 1}, _, _, [], _Fixed, _) -> []; % non-empty
-normalize_no_vars({terminal, 1}, S, P, [Function | N], Fixed, M) ->
+normalize_no_vars({leaf, 0}, _, _, _, _Fixed, _) -> [[]]; % empty
+normalize_no_vars({leaf, 1}, _, _, [], _Fixed, _) -> []; % non-empty
+normalize_no_vars({leaf, 1}, S, P, [Function | N], Fixed, M) ->
   T1 = ty_function:domain(Function),
   T2 = ty_function:codomain(Function),
   %% ∃ T1-->T2 ∈ N s.t.
@@ -117,7 +117,7 @@ normalize_no_vars({terminal, 1}, S, P, [Function | N], Fixed, M) ->
   X2 = ?F(explore_function_norm(T1, ty_rec:negate(T2), P, Fixed, M)),
   R1 = ?F(constraint_set:meet(X1, X2)),
   %% Continue searching for another arrow ∈ N
-  R2 = ?F(normalize_no_vars({terminal, 1}, S, P, N, Fixed, M)),
+  R2 = ?F(normalize_no_vars({leaf, 1}, S, P, N, Fixed, M)),
   constraint_set:join(R1, R2);
 normalize_no_vars({node, Function, L_BDD, R_BDD}, S, P, Negated, Fixed, M) ->
   T1 = ty_function:domain(Function),
@@ -145,9 +145,9 @@ explore_function_norm(T1, T2, [Function | P], Fixed, M) ->
     ?F(constraint_set:join(NT2,
       ?F(constraint_set:meet(NS1, NS2))))).
 
-substitute(0, _, _) -> 0;
-substitute({terminal, 1}, _, _) ->
-  {terminal, 1};
+substitute({leaf, 0}, _, _) -> {leaf, 0};
+substitute({leaf, 1}, _, _) ->
+  {leaf, 1};
 substitute({node, TyFunction, L_BDD, R_BDD}, Map, Memo) ->
   S1 = ty_function:domain(TyFunction),
   S2 = ty_function:codomain(TyFunction),
@@ -162,8 +162,7 @@ substitute({node, TyFunction, L_BDD, R_BDD}, Map, Memo) ->
     intersect(negate(function(NewTyFunction)), R_BDD)
   ).
 
-has_ref(0, _) -> false;
-has_ref({terminal, _}, _) -> false;
+has_ref({leaf, _}, _) -> false;
 has_ref({node, Function, PositiveEdge, NegativeEdge}, Ref) ->
   ty_function:has_ref(Function, Ref)
   orelse
@@ -171,8 +170,7 @@ has_ref({node, Function, PositiveEdge, NegativeEdge}, Ref) ->
     orelse
     has_ref(NegativeEdge, Ref).
 
-all_variables(0) -> [];
-all_variables({terminal, _}) -> [];
+all_variables({leaf, _}) -> [];
 all_variables({node, Function, PositiveEdge, NegativeEdge}) ->
   ty_rec:all_variables(ty_function:domain(Function))
     ++ ty_rec:all_variables(ty_function:codomain(Function))
