@@ -32,7 +32,12 @@
 % ======
 
 is_subtype(TyRef1, TyRef2) ->
+  io:format(user, "OK~n~p, ~p~n", [TyRef1, TyRef2]),
+  io:format(user, "~p~n", [ty_ref:load(TyRef1)]),
+  io:format(user, "~p~n", [ty_ref:load(TyRef2)]),
+  io:format(user, "~p~n", [ty_ref:load(ty_rec:negate(TyRef2))]),
   NewTy = intersect(TyRef1, ty_rec:negate(TyRef2)),
+  io:format(user, "~p~n", [NewTy]),
 
   is_empty(NewTy).
 
@@ -120,6 +125,7 @@ function() ->
 intersect(TyRef1, TyRef2) ->
   #ty{atom = A1, interval = I1, tuple = P1, function = F1} = ty_ref:load(TyRef1),
   #ty{atom = A2, interval = I2, tuple = P2, function = F2} = ty_ref:load(TyRef2),
+  io:format(user, "Doing the intersect~n", []),
   ty_ref:store(#ty{
     atom = dnf_var_ty_atom:intersect(A1, A2),
     interval = dnf_var_int:intersect(I1, I2),
@@ -146,7 +152,19 @@ union(A, B) -> negate(intersect(negate(A), negate(B))).
 is_any(TyRef) ->
   is_empty(ty_rec:negate(TyRef)).
 
+% constant check
 is_empty(TyRef) ->
+  Ty = ty_ref:load(TyRef),
+  Res = dnf_var_ty_atom:is_empty(Ty#ty.atom)
+    andalso dnf_var_int:is_empty(Ty#ty.interval)
+    andalso dnf_var_ty_tuple:is_empty(Ty#ty.tuple)
+    andalso dnf_var_ty_function:is_empty(Ty#ty.function),
+
+%%  io:format(user, "Empty~n~p :: ~p~n", [Res, Ty]),
+  Res
+.
+
+is_empty_full(TyRef) ->
   % first try op-cache
   case ty_ref:is_empty_cached(TyRef) of
     R when R == true; R == false -> R;

@@ -32,6 +32,7 @@ diff(B1, B2) -> gen_bdd:diff(?P, B1, B2).
 negate(B1) -> gen_bdd:negate(?P, B1).
 
 is_any(B) -> gen_bdd:is_any(?P, B).
+is_empty(B) -> gen_bdd:is_empty(?P, B).
 
 % ==
 % basic interface
@@ -39,14 +40,6 @@ is_any(B) -> gen_bdd:is_any(?P, B).
 
 equal(B1, B2) -> gen_bdd:equal(?P, B1, B2).
 compare(B1, B2) -> gen_bdd:compare(?P, B1, B2).
-
-
-is_empty({leaf, 0}) -> true;
-is_empty({leaf, Function}) ->
-  dnf_ty_function:is_empty(Function);
-is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
-  is_empty(PositiveEdge)
-    and is_empty(NegativeEdge).
 
 normalize(Ty, Fixed, M) -> normalize(Ty, [], [], Fixed, M).
 
@@ -99,7 +92,6 @@ has_ref({leaf, Function}, Ref) ->
   dnf_ty_function:has_ref(Function, Ref);
 has_ref({node, _Variable, PositiveEdge, NegativeEdge}, Ref) ->
   has_ref(PositiveEdge, Ref) orelse has_ref(NegativeEdge, Ref).
-
 
 
 all_variables({leaf, 0}) -> [];

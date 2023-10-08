@@ -30,34 +30,37 @@ function(TyFunction) -> gen_bdd:element(?P, TyFunction).
 % type interface
 % ==
 empty() -> gen_bdd:empty(?P).
-any() ->
-  gen_bdd:any(?P).
+any() -> gen_bdd:any(?P).
 
-union(B1, B2) -> gen_bdd:union(?P, B1, B2).
-intersect(B1, B2) -> gen_bdd:intersect(?P, B1, B2).
-diff(B1, B2) -> gen_bdd:diff(?P, B1, B2).
-negate(B1) -> gen_bdd:negate(?P, B1).
+union(B1, B2) -> simplify(gen_bdd:union(?P, B1, B2)).
+intersect(B1, B2) -> simplify(gen_bdd:intersect(?P, B1, B2)).
+diff(B1, B2) -> simplify(gen_bdd:diff(?P, B1, B2)).
+negate(B1) -> simplify(gen_bdd:negate(?P, B1)).
 
 is_any(B) -> gen_bdd:is_any(?P, B).
+is_empty(B) -> gen_bdd:is_empty(?P, B).
 
-% ==
-% basic interface
-% ==
+simplify(Bdd) ->
+  IsEmpty = is_empty_full(Bdd),
+  case IsEmpty of
+    true -> empty();
+    _ -> Bdd
+  end.
 
 equal(B1, B2) -> gen_bdd:equal(?P, B1, B2).
 compare(B1, B2) -> gen_bdd:compare(?P, B1, B2).
 
-is_empty(TyDnf) ->
-  is_empty(
+is_empty_full(TyDnf) ->
+  is_empty_full(
     TyDnf,
     ty_rec:empty(), [], []
   ).
 
-is_empty({leaf, 0}, _, _, _) -> true;
+is_empty_full({leaf, 0}, _, _, _) -> true;
 % TODO should only be {terminal, 1}, not just 1!
 %%is_empty(1, _, _, []) -> false;
-is_empty({leaf, 1}, _, _, []) -> false;
-is_empty({leaf, 1}, S, P, [Function | N]) ->
+is_empty_full({leaf, 1}, _, _, []) -> false;
+is_empty_full({leaf, 1}, S, P, [Function | N]) ->
   T1 = ty_function:domain(Function),
   T2 = ty_function:codomain(Function),
   (
@@ -70,13 +73,13 @@ is_empty({leaf, 1}, S, P, [Function | N]) ->
   )
   %% Continue searching for another arrow ∈ N
     orelse
-    is_empty({leaf, 1}, S, P, N)
+    is_empty_full({leaf, 1}, S, P, N)
   ;
-is_empty({node, Function, L_BDD, R_BDD}, S, P, N) ->
+is_empty_full({node, Function, L_BDD, R_BDD}, S, P, N) ->
   T1 = ty_function:domain(Function),
-  is_empty(L_BDD, ty_rec:union(S, T1), [Function | P], N)
+  is_empty_full(L_BDD, ty_rec:union(S, T1), [Function | P], N)
   andalso
-    is_empty(R_BDD, S, P, [Function | N])
+    is_empty_full(R_BDD, S, P, [Function | N])
 .
 
 % optimized phi' (4.10) from paper covariance and contravariance

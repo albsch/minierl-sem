@@ -8,9 +8,9 @@
 -export([is_empty/1, is_empty_full/1, is_any/1, normalize/5, substitute/3]).
 -export([tuple/1, all_variables/1, has_ref/2]).
 
-tuple(TyTuple) -> gen_bdd:element(?P, TyTuple).
-empty() -> gen_bdd:empty(?P).
-any() -> gen_bdd:any(?P).
+tuple(TyTuple) -> error(todo_ldd).
+empty() -> error(todo_ldd).
+any() -> error(todo_ldd).
 
 union(B1, B2) -> simplify(gen_bdd:union(?P, B1, B2)).
 intersect(B1, B2) -> simplify(gen_bdd:intersect(?P, B1, B2)).
@@ -29,7 +29,9 @@ negate(B1) -> simplify(gen_bdd:negate(?P, B1)).
 % R3: is_any(Bdd) => any()
 simplify(Bdd) ->
   % R1
+  io:format(user, "BEFORE SIMPLIFY: ~p~n", [Bdd]),
   Bdd1 = gen_bdd:dnf(?P, Bdd, {fun simplify_coclause/3, fun combine_results/2}),
+  io:format(user, "AFTER SIMPLIFY: ~p~n", [Bdd1]),
 
   % R2 & R3
   % check any  Any <= Bdd <-> Any & !Bdd empty
@@ -48,6 +50,10 @@ is_empty_coclause(_Pos, _Neg, 0) -> true;
 is_empty_coclause([], Neg, 1) -> is_empty_coclause([ty_tuple:any()], Neg, 1);
 is_empty_coclause(Pos, Neg, 1) ->
   % invariant: Pos is single tuple (simplification step required)
+  case length(Pos) /= 1 of
+    true -> error(helloworld);
+    _ -> ok
+  end,
   [Tuple] = Pos,
   S1 = ty_tuple:pi1(Tuple),
   S2 = ty_tuple:pi2(Tuple),
@@ -55,17 +61,24 @@ is_empty_coclause(Pos, Neg, 1) ->
     ty_rec:is_empty(S2) orelse
     phi(S1, S2, Neg).
 
-is_empty_union(F1, F2) -> F1() andalso F2().
+is_empty_union(F1, F2) ->
+  F1()
+    andalso
+    F2().
 
+simplify_coclause([], Negative, 1) ->
+  error(todo);
 simplify_coclause(Positive, Negative, 1) ->
   BigTuple = ty_tuple:big_intersect(Positive),
   case ty_tuple:is_empty(BigTuple) of
     true -> empty();
     false ->
-      lists:foldl(fun(Neg, AccBdd) ->
+      After = lists:foldl(fun(Neg, AccBdd) ->
         NBdd = gen_bdd:negate(?P, dnf_ty_tuple:tuple(Neg)),
         gen_bdd:intersect(?P, NBdd, AccBdd)
-                  end, dnf_ty_tuple:tuple(BigTuple), Negative)
+                  end, dnf_ty_tuple:tuple(BigTuple), Negative),
+      io:format(user, "After SIMP: ~p~n", [After]),
+      After
   end;
 simplify_coclause(_Positive, _Negative, 0) ->
   gen_bdd:empty(?P).

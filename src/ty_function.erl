@@ -3,7 +3,7 @@
 %% domain -> co-domain function representation
 
 -export([compare/2, equal/2, is_empty/1, is_any/1]).
--export([function/2, domain/1, codomain/1, codomains_intersect/1, has_ref/2]).
+-export([function/2, domain/1, codomain/1, codomains_intersect/1, has_ref/2, any/0, empty/0]).
 
 compare(A, B) when A < B -> -1;
 compare(A, B) when A > B -> 1;
@@ -11,8 +11,8 @@ compare(_, _) -> 0.
 
 equal(P1, P2) -> compare(P1, P2) =:= 0.
 
-any() ->
-    {ty_function, ty_rec:empty(), ty_rec:any()}.
+empty() -> error(functions_never_empty).
+any() -> {ty_function, ty_rec:empty(), ty_rec:any()}.
 
 function(Ref1, Ref2) ->
     % ensure that constructed function is keeping the Any representation invariant

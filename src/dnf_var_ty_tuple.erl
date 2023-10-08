@@ -1,12 +1,9 @@
 -module(dnf_var_ty_tuple).
--vsn({2,0,0}).
 
 -define(P, {dnf_ty_tuple, ty_variable}).
 
--behavior(eq).
 -export([equal/2, compare/2]).
 
--behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
 -export([is_empty/1, is_any/1, normalize/3, substitute/3]).
 
@@ -35,6 +32,7 @@ diff(B1, B2) -> gen_bdd:diff(?P, B1, B2).
 negate(B1) -> gen_bdd:negate(?P, B1).
 
 is_any(B) -> gen_bdd:is_any(?P, B).
+is_empty(B) -> gen_bdd:is_empty(?P, B).
 
 % ==
 % basic interface
@@ -43,13 +41,6 @@ is_any(B) -> gen_bdd:is_any(?P, B).
 equal(B1, B2) -> gen_bdd:equal(?P, B1, B2).
 compare(B1, B2) -> gen_bdd:compare(?P, B1, B2).
 
-
-is_empty({leaf, 0}) -> true;
-is_empty({leaf, Tuple}) ->
-  dnf_ty_tuple:is_empty(Tuple);
-is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
-  is_empty(PositiveEdge)
-    and is_empty(NegativeEdge).
 
 normalize(Ty, Fixed, M) -> normalize(Ty, [], [], Fixed, M).
 
