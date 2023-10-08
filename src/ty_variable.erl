@@ -1,15 +1,12 @@
 -module(ty_variable).
--vsn({2,0,0}).
 
 % ETS table is used to strict monotonically increment a variable ID counter
 -on_load(setup_ets/0).
 -define(VAR_ETS, variable_counter_ets_table).
 
--behavior(eq).
 -export([equal/2, compare/2]).
-
--behavior(var).
 -export([new/1, smallest/3, normalize/6]).
+-export([is_empty/1, is_any/1]).
 
 -record(var, {id, name}).
 -type var() :: #var{id :: integer(), name :: string()}.
@@ -33,6 +30,9 @@ compare(#var{id = Id1}, #var{id = Id2}) when Id1 > Id2 -> +1;
 compare(_, _) -> 0.
 
 leq(#var{id = Id1}, #var{id = Id2}) -> Id1 =< Id2.
+
+is_empty({var, _, _}) -> false.
+is_any({var, _, _}) -> false.
 
 -spec new(string()) -> var().
 new(Name) ->

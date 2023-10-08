@@ -110,7 +110,7 @@ all_variables({node, Variable, PositiveEdge, NegativeEdge}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-usage_test() ->
+not_empty_test() ->
   %   a1 ^ (int, int)
   TIa = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
   TIb = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
@@ -121,12 +121,39 @@ usage_test() ->
   Dnf_Ty_Tuple = dnf_ty_tuple:tuple(Ty_Tuple),
 
   BVar1 = dnf_var_ty_tuple:var(VarA),
+  false = is_empty(BVar1),
+
   BTupleA = dnf_var_ty_tuple:tuple(Dnf_Ty_Tuple),
+  false = is_empty(BTupleA),
 
   Bdd = dnf_var_ty_tuple:intersect(BVar1, BTupleA),
+  false = is_empty(Bdd),
+
+  %  a1 ^ (int, int) ^ (0, int) == 0
+  SomeEmpty = tuple(dnf_ty_tuple:tuple(ty_tuple:empty())),
+
+  End = intersect(Bdd, SomeEmpty),
+  true = is_empty(End),
+  End = empty(),
+
+  ok.
+
+
+usage_test() ->
+  %   a1 ^ (int, int)
+  TIa = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
+  TIb = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
+  Ty_Tuple = ty_tuple:tuple(TIa, TIb),
+
+  VarA = ty_variable:new("a1"),
+  Dnf_Ty_Tuple = dnf_ty_tuple:tuple(Ty_Tuple),
+
+  BVar1 = var(VarA),
+  BTupleA = tuple(Dnf_Ty_Tuple),
+
+  Bdd = intersect(BVar1, BTupleA),
 
   false = dnf_var_int:is_empty(Bdd),
-%%  io:format(user, "~p~n", [Bdd]),
 
   ok.
 

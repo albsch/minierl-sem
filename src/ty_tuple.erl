@@ -4,7 +4,7 @@
 %% 2-tuple representation
 
 -export([compare/2, equal/2, is_empty/1, is_any/1]).
--export([tuple/2, pi1/1, pi2/1, has_ref/2, big_intersect/1, any/0]).
+-export([tuple/2, pi1/1, pi2/1, has_ref/2, big_intersect/1, any/0, empty/0]).
 
 compare(A, B) when A < B -> -1;
 compare(A, B) when A > B -> 1;
@@ -12,8 +12,8 @@ compare(_, _) -> 0.
 
 equal(P1, P2) -> compare(P1, P2) =:= 0.
 
-any() ->
-    {ty_tuple, ty_rec:any(), ty_rec:any()}.
+empty() -> {ty_tuple, ty_rec:empty(), ty_rec:empty()}.
+any() -> {ty_tuple, ty_rec:any(), ty_rec:any()}.
 
 tuple(Ref1, Ref2) ->
     % ensure that constructed tuple is keeping the Empty & Any representation invariant
