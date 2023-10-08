@@ -14,7 +14,7 @@
 
 -behavior(type).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([eval/1, is_empty/1, is_any/1, normalize/5, substitute/3]).
+-export([is_empty/1, is_any/1, normalize/5, substitute/3]).
 
 -export([function/1, all_variables/1, has_ref/2]).
 
@@ -38,7 +38,6 @@ intersect(B1, B2) -> gen_bdd:intersect(?P, B1, B2).
 diff(B1, B2) -> gen_bdd:diff(?P, B1, B2).
 negate(B1) -> gen_bdd:negate(?P, B1).
 
-eval(B) -> gen_bdd:eval(?P, B).
 is_any(B) -> gen_bdd:is_any(?P, B).
 
 % ==
@@ -181,6 +180,79 @@ all_variables({node, Function, PositiveEdge, NegativeEdge}) ->
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+
+basic_leaf_test() ->
+  % (0, 0)
+  Empty = empty(),
+  true = is_empty(Empty),
+  false = is_any(Empty),
+  % (1, 1)
+  Any = any(),
+  false = is_empty(Any),
+  true = is_any(Any),
+  ok.
+
+equiv_any_test() ->
+  % (0 -> 1) == (leaf 1)
+  AnyFunction = ty_function:function(ty_rec:empty(), ty_rec:any()),
+
+  Any = any(),
+  false = is_empty(Any),
+  true = is_any(Any),
+
+  AnyOther = function(AnyFunction),
+  false = is_empty(AnyOther),
+  true = is_any(AnyOther),
+  Any = AnyOther, % same representation
+
+  ok.
+
+not_empty_test() ->
+  % (N, N)
+  TyInt = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
+  Function = ty_function:function(TyInt, TyInt),
+  false = ty_function:is_empty(Function),
+  false = ty_function:is_any(Function),
+  DnfFunction = function(Function),
+  false = is_empty(DnfFunction),
+  false = is_any(DnfFunction),
+
+  % AnyT
+  FunctionAny = any(),
+
+  % union ==> any
+  Other = union(DnfFunction, FunctionAny),
+  false = is_empty(Other),
+  true = is_any(Other),
+  Other = FunctionAny,
+
+  ok.
+
+intersection_representation_test() ->
+  TyInt = ty_rec:interval(dnf_var_int:int(ty_interval:interval('*', '*'))),
+  TyI1 = ty_rec:interval(dnf_var_int:int(ty_interval:interval(1, 1))),
+  TyI2 = ty_rec:interval(dnf_var_int:int(ty_interval:interval(2, 2))),
+
+  T1 = function(ty_function:function(TyInt, ty_rec:any())),
+  T2 = function(ty_function:function(ty_rec:any(), TyInt)),
+
+  % intersect, not empty
+  Bdd = intersect(T1, T2),
+  false = is_empty(Bdd),
+  false = is_any(Bdd),
+
+  T3 = function(ty_function:function(ty_rec:any(), TyI1)),
+  Bdd2 = intersect(Bdd, T3),
+  false = is_empty(Bdd2),
+  false = is_any(Bdd2),
+
+  T4 = function(ty_function:function(ty_rec:any(), TyI2)),
+  Bdd3 = intersect(Bdd2, T4),
+  false = is_empty(Bdd3),
+  false = is_any(Bdd3),
+
+  ok.
+
 
 %%normalize2_test_() ->
 %%  {timeout, 3000,

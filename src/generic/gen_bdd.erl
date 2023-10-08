@@ -115,16 +115,15 @@ is_any(P = {T, E}, X = {node, Element, Left, Right}) ->
   % invariant
   false = is_empty(P, Left) andalso is_empty(P, Right),
   false = is_any(P, Left) andalso is_any(P, Right),
-  io:format(user, "not any: ~p~n", [X]),
   false % TODO correct?
 .
 
-is_empty({Terminal, _}, {leaf, Ty}) -> Terminal:is_empty(Ty);
-is_empty(P = {T, E}, X = {node, _Element, Left, Right}) ->
-  % invariant
+is_empty({Terminal, _}, {leaf, Ty}) ->
+  Terminal:is_empty(Ty);
+is_empty(P, {node, _Element, Left, Right}) ->
+  % invariant TODO remove expensive
   false = is_empty(P, Left) andalso is_empty(P, Right),
   false = is_any(P, Left) andalso is_any(P, Right),
-  io:format(user, "not empty: ~p~n", [X]),
   false % TODO correct?
 .
 

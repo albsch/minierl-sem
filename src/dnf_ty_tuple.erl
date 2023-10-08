@@ -5,7 +5,7 @@
 
 -export([equal/2, compare/2]).
 -export([empty/0, any/0, union/2, intersect/2, diff/2, negate/1]).
--export([is_empty/1, is_any/1, normalize/5, substitute/3]).
+-export([is_empty/1, is_empty_full/1, is_any/1, normalize/5, substitute/3]).
 -export([tuple/1, all_variables/1, has_ref/2]).
 
 tuple(TyTuple) -> gen_bdd:element(?P, TyTuple).
