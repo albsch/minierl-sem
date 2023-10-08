@@ -50,13 +50,6 @@ compare(B1, B2) -> gen_bdd:compare(?P, B1, B2).
 is_empty(DnfVarInt) ->
   gen_bdd:is_empty(?P, DnfVarInt).
 
-%%is_empty({leaf, Interval}) ->
-%%  ty_interval:is_empty(Interval);
-%%is_empty({node, _Variable, PositiveEdge, NegativeEdge}) ->
-%%  is_empty(PositiveEdge)
-%%    andalso is_empty(NegativeEdge).
-
-
 normalize(Ty, Fixed, M) -> normalize(Ty, [], [], Fixed, M).
 
 normalize(0, _, _, _, _) -> [[]]; % satisfiable

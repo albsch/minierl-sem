@@ -21,6 +21,9 @@
 %%-behavior(eq). % implements eq behavior indirectly parameterized over a type
 -export([equal/3, compare/3]).
 
+% traverse DNF
+-export([dnf/3]).
+
 % basic interface (parameterized)
 equal(Gen = {_, Element}, {node, E1, A1, B1}, {node, E2, A2, B2}) ->
     Element:equal(E1, E2) andalso equal(Gen, A1, A2) andalso equal(Gen, B1, B2);
@@ -46,7 +49,18 @@ compare(Gen = {_, Element}, {node, E1, A1, B1}, {node, E2, A2, B2}) ->
 empty({Terminal, _}) -> {leaf, Terminal:empty()}.
 any({Terminal, _}) -> {leaf, Terminal:any()}.
 
-element(I, Atom) -> s(I, {node, Atom, any(I), empty(I)}).
+element(I = {Terminal, Element}, Atom) ->
+  % smart constructor: if Atom is already ANY or EMPTY, then reduce
+  case Element:is_empty(Atom) of
+    true -> empty(I);
+    _ ->
+      case Element:is_any(Atom) of
+        true -> any(I);
+        _ ->
+          s(I, {node, Atom, any(I), empty(I)})
+      end
+  end.
+
 leaf(I, Ty) -> leaf_of(I, Ty).
 
 union(I = {Terminal, Element}, A, B) ->
@@ -129,3 +143,14 @@ leaf_of({Terminal, _}, Ty) ->
 s(_G, {node, _, B, B}) -> B;
 s(_G, X) -> X.
 
+
+dnf(I, Bdd, {ProcessCoclause, CombineResults}) ->
+  do_dnf(I, Bdd, {ProcessCoclause, CombineResults}, _Pos = [], _Neg = []).
+
+do_dnf(I = {T, _}, {node, Element, Left, Right}, F = {_Process, Combine}, Pos, Neg) ->
+  F1 = fun() -> do_dnf(I, Left, F, [Element | Pos], Neg) end,
+  F2 = fun() -> do_dnf(I, Right, F, Pos, [Element | Neg]) end,
+  Combine(F1, F2);
+do_dnf(I = {T, _}, {leaf, Terminal}, {Proc, _Comb}, Pos, Neg) ->
+  DnfTerminal = T:dnf(Terminal),
+  Proc(Pos, Neg, DnfTerminal).

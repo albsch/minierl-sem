@@ -4,7 +4,7 @@
 -behavior(type).
 -export([empty/0, any/0]).
 -export([union/2, negate/1, intersect/2, diff/2, is_any/1]).
--export([is_empty/1, eval/1]).
+-export([is_empty/1]).
 
 % additional type constructors
 -export([function/1, variable/1, atom/1, interval/1, tuple/1]).
@@ -143,6 +143,8 @@ diff(A, B) -> intersect(A, negate(B)).
 -spec union(ty_ref(), ty_ref()) -> ty_ref().
 union(A, B) -> negate(intersect(negate(A), negate(B))).
 
+is_any(TyRef) ->
+  is_empty(ty_rec:negate(TyRef)).
 
 is_empty(TyRef) ->
   % first try op-cache
@@ -168,14 +170,6 @@ is_empty_miss(TyRef) ->
         end
       end
   ).
-
-% TODO implement witness
-eval(_) ->
-  erlang:error(eval_witness_not_implemented).
-
-
-is_any(_Arg0) ->
-  erlang:error(any_not_implemented). % TODO needed?
 
 normalize(TyRef, Fixed, M) ->
   Ty = ty_ref:load(TyRef),
